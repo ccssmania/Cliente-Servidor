@@ -90,19 +90,24 @@ public:
   void sendMessage(const string &dest, const string &text, const string &sender){
     message m;
     //users[dest].identity;
-    cout << "estoy en server sendMessage" << endl;
     cout << "NOMBRE :" << sender << endl;
     m << users[dest].identity() << text << sender ;
 
     send(m);
   }
 
-  void newGroup(const string& creator, const string& name) {
+  void newGroup(const string& creator, const string& name, const string &sender) {
         if (groups.count(name)) {
             cerr << "Group " << name << " is already created" << endl;
+            message res;
+            res << sender << "El grupo ya fue creado" << "server";
+            send(res);
         } else {
+            message res;
             groups[name].push_front(users[creator]);
             cout << "Group created" << endl;
+            res << sender << "el grupo de nombre :" << name << "fue creado" << "server";
+            send(res);
         }
     }
 
@@ -110,10 +115,12 @@ public:
         message res;
         if (!groups.count(name)) {
             groups[nameGroup].push_front(users[name]);
-            //res << sender << "Se a unido al grupo exitosamente";
+            res << sender << "Se a unido al grupo exitosamente" << "server";
+            send(res);
         } else {
             cout << "Group name does not exist" << endl;
-            //res << "Group name does not exist";
+            res << sender <<"Group name does not exist" << "server";
+            send(res);
         }
         
     }
@@ -159,21 +166,44 @@ public:
     }*/
     void sendGroupMessage(const string& dest, const string& nombre,
                           const string& text, const string &sender) {
-        cout << "tex grupos " << text << endl;
         for (const auto& user : groups[dest]) {
+
             if (user.identity() != sender) {
                 message m;
-                cout << user.userName() << " " << endl;
+                cout << "Enviando a :" << user.userName() << " " << endl;
                 m << user.identity() << "in Group " << dest << " :" << text << nombre;
                 send(m);
             }
         }
     }
-  
+  void send_voice(message &m){
+      string name;
+      m >> name;
+      size_t sampleCount;
+      m >> sampleCount;
+
+      size_t sampleRate;
+      m >> sampleRate;
+
+      size_t sampleChannelCount;
+      m >> sampleChannelCount;
+
+      const int16_t* sample;
+      m >> sample;  
+
+      string userName;
+      m >> userName;
+
+      message res;
+
+      res << users[name].identity() << "voice" << sampleCount << sampleRate << sampleChannelCount;
+      res.add_raw(sample,sampleCount*sizeof(int16_t));
+      res << userName;
+
+    }
 };
 
 void sendMessage(message &msg, const string dest, const string &sender, ServerState &server){
-  cout << "msg parts :"<< msg.parts() << endl;
 
   string text;
   string aux;
@@ -211,6 +241,7 @@ void singUp(message &msg, const string &sender, ServerState &server){
   server.newUser(userName, password, sender); 
 }
 
+
 /*void sendMessage_group(const string &name, const string text, ServerState &server){
   server.sendMessage_group(name,text);
 }*/
@@ -227,7 +258,7 @@ void dispatch(message &msg, ServerState &server) {
 
       cout <<"action " << action << endl;
 
-      //cout << " sender : " << sender << endl;
+  
       bool estado = server.conectado(action);
       cout << "estado :" << estado << endl;
 
@@ -253,6 +284,10 @@ void dispatch(message &msg, ServerState &server) {
 
         server.newUser(name,password,sender);
 
+      }else if(action == "voice" && msg.parts() == 8){
+
+        server.send_voice(msg);
+
       } else if(action == "newGroup"){
 
         string name_group;
@@ -260,9 +295,7 @@ void dispatch(message &msg, ServerState &server) {
         string name_creater;
         msg >> name_creater;
 
-        server.newGroup(name_creater, name_group);
-
-        //cout << "Grupo creado exitosamente" << endl;
+        server.newGroup(name_creater, name_group, sender);
 
 
       } else if(action == "addToGroup"){

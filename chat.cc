@@ -21,13 +21,13 @@ vector<string> tokenize(string &input) {
   return result;
 }
 
-void voice(vector< string > &tokens, socket &s, string userName){
+void voice(vector< string > &tokens, socket &s, string userName, SoundBufferRecorder &recorder){
   // first check if an input audio device is available on the system
   if (!sf::SoundBufferRecorder::isAvailable())
   {
      cout << "no se puede grabar sin microfono" << endl;
   }
-  SoundBufferRecorder recorder;
+  
   cout << " CUANDO QUIERA PARAR DE GRABAR ESCRIBA STOP" << endl;
   string tiempo;
   // create the recorder
@@ -51,7 +51,9 @@ void voice(vector< string > &tokens, socket &s, string userName){
     m << tokens[0] << tokens[1] << count << rate << channelCount;
     m.add_raw(sample, count * sizeof(sf::Int16));
     m << userName;
+    
     s.send(m);
+    
   }
   else recorder.stop();
 }
@@ -96,6 +98,7 @@ int main(int argc, char const *argv[]) {
   }
 
   Sound sound; //objeto de tipo Sound
+  SoundBufferRecorder recorder;
   
   string address(argv[1]);
   string userName(argv[2]);
@@ -128,6 +131,7 @@ int main(int argc, char const *argv[]) {
         string text;
         string aux;
         string name;
+        cout << "msg parts " << m.parts()<< endl;
         for(int i = 0; i < m.parts() - 1; i++){
           m >> aux;
           v.push_back(aux);
@@ -148,16 +152,20 @@ int main(int argc, char const *argv[]) {
         // Handle input from console
         string input;
         getline(cin, input);
-        vector<string> tokens = tokenize(input);
-        if(tokens[0] == "voice"){
-          voice(tokens,s,userName);
-        }
-        else{
-          message m;
-          for (const string &str : tokens)
-            m << str;
-          m << userName;
-          s.send(m);
+        if(input != ""){
+          vector<string> tokens = tokenize(input);
+          if(tokens[0] == "voice" && tokens.size() == 2){
+            voice(tokens,s,userName, recorder);
+          }
+          else{
+            message m;
+
+            for (const string &str : tokens)
+              m << str;
+
+            m << userName;
+            s.send(m);
+          }
         }
       }
     }

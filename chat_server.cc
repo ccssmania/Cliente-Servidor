@@ -176,9 +176,8 @@ public:
             }
         }
     }
-  void send_voice(message &m){
-      string name;
-      m >> name;
+  void send_voice(message &m, const string &voice_to){
+      
       size_t sampleCount;
       m >> sampleCount;
 
@@ -196,10 +195,10 @@ public:
 
       message res;
 
-      res << users[name].identity() << "voice" << sampleCount << sampleRate << sampleChannelCount;
+      res << users[voice_to].identity() << "voice" << sampleCount << sampleRate << sampleChannelCount;
       res.add_raw(sample,sampleCount*sizeof(int16_t));
       res << userName;
-
+      send(res);
     }
 };
 
@@ -271,11 +270,11 @@ void dispatch(message &msg, ServerState &server) {
 
         sendMessage(msg, action, sender, server);
 
-      } else if(action == "singUp"){
+      } else if(action == "singUp"){//---------------------------------------------------------------------
 
-        singUp(msg, sender, server);
+        singUp(msg, sender, server);//                          hacen lo mismo
 
-      } else if(action == "newUser" ){
+      } else if(action == "newUser" ){//----------------------------------------------------------------
 
         string name;
         msg >> name;
@@ -285,8 +284,16 @@ void dispatch(message &msg, ServerState &server) {
         server.newUser(name,password,sender);
 
       }else if(action == "voice" && msg.parts() == 8){
-
-        server.send_voice(msg);
+        string voice_to;
+        msg >> voice_to;
+        if(server.conectado(voice_to) == true && server.exist(voice_to) == true){
+          server.send_voice(msg, voice_to);
+        }
+        else{
+          message err;
+          err << sender << "  el usurio no existe o no esta conectado " << "server";
+          server.send(err);
+        }
 
       } else if(action == "newGroup"){
 
@@ -333,7 +340,7 @@ void dispatch(message &msg, ServerState &server) {
         } else {
             cerr << "Action not supported/implemented" << endl;
               message reply;
-              reply << sender << " unsupported " << action;
+              reply << sender << " unsupported " << action << "Server";
               server.send(reply);
         }
     }

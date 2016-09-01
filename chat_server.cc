@@ -290,6 +290,7 @@ void dispatch(message &msg, ServerState &server) {
 
       cout <<"action " << action << endl;
 
+      cout << "partes del mensaje : " << msg.parts() << endl;
   
       bool estado = server.conectado(action);
       cout << "estado :" << estado << endl;
@@ -333,7 +334,7 @@ void dispatch(message &msg, ServerState &server) {
           server.send(err);
         }
 
-      } else if(action == "newGroup"){
+      } else if(action == "newGroup" && msg.parts() == 4){
 
         string name_group;
         msg >> name_group;
@@ -343,7 +344,7 @@ void dispatch(message &msg, ServerState &server) {
         server.newGroup(name_creater, name_group, sender);
 
 
-      } else if(action == "addToGroup"){
+      } else if(action == "addToGroup" && msg.parts() == 4){
           string nameGroup;
           msg >> nameGroup;
 

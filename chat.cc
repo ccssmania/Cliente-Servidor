@@ -21,13 +21,28 @@ vector<string> tokenize(string &input) {
   return result;
 }
 
+
+
+void send_voice(const SoundBuffer &buffer, vector<string> &tokens, socket &s, string userName){
+
+    const Int16 *sample = buffer.getSamples();
+    size_t count = buffer.getSampleCount();
+    size_t rate = buffer.getSampleRate();
+    size_t channelCount = buffer.getChannelCount();
+    message m;
+    m << tokens[0] << tokens[1] << count << rate << channelCount;
+    m.add_raw(sample, count * sizeof(sf::Int16));
+    m << userName;
+    
+    s.send(m);
+}
+
 void voice(vector< string > &tokens, socket &s, string userName, SoundBufferRecorder &recorder){
   // first check if an input audio device is available on the system
   if (!sf::SoundBufferRecorder::isAvailable())
   {
      cout << "no se puede grabar sin microfono" << endl;
   }
-  
   cout << " CUANDO QUIERA PARAR DE GRABAR ESCRIBA STOP" << endl;
   string tiempo;
   // create the recorder
@@ -43,22 +58,31 @@ void voice(vector< string > &tokens, socket &s, string userName, SoundBufferReco
 
     // retrieve the buffer that contains the captured audio data
     const sf::SoundBuffer& buffer = recorder.getBuffer();
-    const Int16 *sample = buffer.getSamples();
-    size_t count = buffer.getSampleCount();
-    size_t rate = buffer.getSampleRate();
-    size_t channelCount = buffer.getChannelCount();
-    message m;
-    m << tokens[0] << tokens[1] << count << rate << channelCount;
-    m.add_raw(sample, count * sizeof(sf::Int16));
-    m << userName;
-    
-    s.send(m);
-    
+    send_voice(buffer, tokens, s, userName);
   }
-  else recorder.stop();
+  else {
+    recorder.stop();
+    const sf::SoundBuffer& buffer = recorder.getBuffer();
+    send_voice(buffer, tokens, s, userName);
+  }
 }
 
-void play_voice(message &m, socket &s, Sound &sound){
+void voice_call(vector< string > &tokens, socket &s, string userName, SoundBufferRecorder &recorder, bool &call_state){
+if (!sf::SoundBufferRecorder::isAvailable())
+  {
+     cout << "no se puede grabar sin microfono" << endl;
+  }
+  while(call_state){
+  recorder.start();
+  sleep(milliseconds(5000));
+  recorder.stop();
+  const SoundBuffer& buffer = recorder.getBuffer();
+  send_voice(buffer, tokens, s, userName);
+
+  }
+}
+
+SoundBuffer reconstruction(message &m){
   size_t sampleCount;
   m >> sampleCount;
 
@@ -73,9 +97,25 @@ void play_voice(message &m, socket &s, Sound &sound){
   /////////////////////////////////////////
   string name;
   m >> name;
-  cout << "voice from: " << name << endl; 
+  cout << "voice from: " << name << endl;
   SoundBuffer buffer;
   buffer.loadFromSamples(sample, sampleCount, sampleChannelCount, sampleRate);
+  return buffer; 
+}
+
+void play_sound_call(message &m, Sound &sound, bool &call_state){
+  SoundBuffer buffer = reconstruction(m);
+  while(call_state){
+    sound.setBuffer(buffer);
+    sound.play();
+    sleep(milliseconds(5000));
+  }
+}
+
+
+
+void play_voice(message &m, socket &s, Sound &sound){
+  SoundBuffer buffer = reconstruction(m);
   sound.setBuffer(buffer);
   sound.play();
   sleep(milliseconds(5000));
@@ -90,6 +130,63 @@ void play_voice(message &m, socket &s, Sound &sound){
 
   }
 }*/
+void server(message &m,socket &s,string &userName, bool &call_state, Sound &sound, SoundBufferRecorder &recorder){
+  vector < string > v;
+  string text;
+  string aux;
+  string name;
+  v.clear();
+  //cout << "msg parts " << m.parts()<< endl;
+  for(int i = 0; i < m.parts() - 1; i++){
+    m >> aux;
+    v.push_back(aux);
+    if(v[0] == "voice" || v[0] == "voiceG" || v[0] == "call") break;
+    if(v[0] == "stop" && v[1] == "call"){call_state = false; break;}
+    text += aux + " ";
+  }
+  
+  //v.push_back(name);
+  //cout << name << " asfasdfa " << m.parts() << endl;
+  if(v[0] == "voice"){
+    play_voice(m,s, sound);
+  }
+  else if(v[0] == "voiceG"){
+
+    string group_name;
+    m >> group_name;
+    cout << "voice in group " << group_name << " ";
+    play_voice(m,s, sound);
+
+  }/*else if (v[0] == "call"){
+    break;
+  }else if(v[0] == "stop" && v[1] == "call"){
+      break;
+
+  } */else{
+    m >> name;
+    cout << name <<" say : " << text << endl;
+  }
+}
+
+void consola(vector< string > &tokens, socket &s, string &userName, Sound &sound, SoundBufferRecorder &recorder){
+  if(tokens[0] == "voice" && tokens.size() == 2){
+      voice(tokens,s,userName, recorder);
+    }/*else if(tokens[0] == "call"){
+      break;
+    }else if(tokens[0] == "stop" && tokens[1] == "call"){
+      break;
+    }*/
+    else{
+      message m;
+
+      for (const string &str : tokens)
+        m << str;
+
+      m << userName;
+      s.send(m);
+    } 
+}
+
 
 int main(int argc, char const *argv[]) {
   if (argc != 4) {
@@ -102,7 +199,7 @@ int main(int argc, char const *argv[]) {
   
   string address(argv[1]);
   string userName(argv[2]);
-  string password(argv[3]);
+  string breakword(argv[3]);
   string sckt("tcp://");
   sckt += address;
   context ctx;
@@ -111,12 +208,11 @@ int main(int argc, char const *argv[]) {
   cout << "Connecting to: " << sckt << endl;
   s.connect(sckt);
 
-  //cout << "hola";
 
   message login;
-  login << "login" << userName << password;
+  login << "login" << userName << breakword;
   s.send(login);
-
+  bool call_state = false;
   int console = fileno(stdin);
   poller poll;
   poll.add(s, poller::poll_in);
@@ -127,35 +223,8 @@ int main(int argc, char const *argv[]) {
         // Handle input in socket
         message m;
         s.receive(m);
-        vector < string > v;
-        string text;
-        string aux;
-        string name;
-        v.clear();
-        //cout << "msg parts " << m.parts()<< endl;
-        for(int i = 0; i < m.parts() - 1; i++){
-          m >> aux;
-          v.push_back(aux);
-          if(v[0] == "voice" || v[0] == "voiceG") break;
-          text += aux + " ";
-        }
+        server(m,s,userName,call_state, sound, recorder);
         
-        //v.push_back(name);
-        //cout << name << " asfasdfa " << m.parts() << endl;
-        if(v[0] == "voice"){
-          play_voice(m,s, sound);
-        }
-        else if(v[0] == "voiceG"){
-
-          string group_name;
-          m >> group_name;
-          cout << "voice in group " << group_name << " ";
-          play_voice(m,s, sound);
-
-        }else{
-          m >> name;
-          cout << name <<" say : " << text << endl;
-        }
       }
       if (poll.has_input(console)) {
         // Handle input from console
@@ -163,18 +232,7 @@ int main(int argc, char const *argv[]) {
         getline(cin, input);
         if(input != ""){
           vector<string> tokens = tokenize(input);
-          if(tokens[0] == "voice" && tokens.size() == 2){
-            voice(tokens,s,userName, recorder);
-          }
-          else{
-            message m;
-
-            for (const string &str : tokens)
-              m << str;
-
-            m << userName;
-            s.send(m);
-          } 
+          consola(tokens, s, userName, sound, recorder);
         }
       }
     }

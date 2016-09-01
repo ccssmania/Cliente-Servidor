@@ -127,12 +127,12 @@ public:
 
 
 
-     bool isGroup(const string &groupName){
+     bool isGroup(const string &groupName){ // BUSCA GRUPO POR NOMBRE DE GRUPO
         if(groups.count(groupName))return true;
         else return false;
      }
 
-     bool isGroup_name(string& name) {
+     bool isGroup_name(string& name) {  //BUSCA UN GRUPO POR NOMBRE DEL USUARIO
         string groupName;
         for(unordered_map<string, list <User>>::iterator i = groups.begin(); i != groups.end(); i++){
             for(auto& j : i->second){
@@ -143,7 +143,7 @@ public:
         
     }
 
-    string nameGroup(const string& name) {
+    string nameGroup(const string& name) { // RETORNA EL NOMBRE DEL GRUPO AL CUAL EL USUARIO PERTENECE
         for (unordered_map<string, list<User>>::iterator it = groups.begin();
              it != groups.end(); ++it) {
             for (const auto& user : it->second) {
@@ -200,6 +200,39 @@ public:
       res << userName;
       send(res);
     }
+
+  void send_voiceGroup(message &m, const string &voice_to, const string &sender){
+    size_t sampleCount;
+      m >> sampleCount;
+
+      size_t sampleRate;
+      m >> sampleRate;
+
+      size_t sampleChannelCount;
+      m >> sampleChannelCount;
+
+      const int16_t* sample;
+      m >> sample;  
+
+      string userName;
+      m >> userName;
+    for (const auto& user : groups[voice_to]) {
+
+            if (user.identity() != sender) {
+                
+
+                message res;
+
+                res << user.identity() << "voiceG" << voice_to<< sampleCount << sampleRate << sampleChannelCount;
+                res.add_raw(sample,sampleCount*sizeof(int16_t));
+                res << userName;
+                cout << "Enviando a :" << user.userName() << " " << endl;
+                
+                // m << user.identity() << "in Group " << dest << " :" << text << nombre;
+                send(res);
+            }
+        }
+  }
 };
 
 void sendMessage(message &msg, const string dest, const string &sender, ServerState &server){
@@ -288,8 +321,13 @@ void dispatch(message &msg, ServerState &server) {
         msg >> voice_to;
         if(server.conectado(voice_to) == true && server.exist(voice_to) == true){
           server.send_voice(msg, voice_to);
-        }
-        else{
+
+
+        }else if(server.isGroup(voice_to)){
+          server.send_voiceGroup(msg, voice_to, sender);
+        }else
+        {
+         
           message err;
           err << sender << "  el usurio no existe o no esta conectado " << "server";
           server.send(err);

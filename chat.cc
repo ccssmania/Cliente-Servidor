@@ -131,11 +131,12 @@ int main(int argc, char const *argv[]) {
         string text;
         string aux;
         string name;
-        cout << "msg parts " << m.parts()<< endl;
+        v.clear();
+        //cout << "msg parts " << m.parts()<< endl;
         for(int i = 0; i < m.parts() - 1; i++){
           m >> aux;
           v.push_back(aux);
-          if(v[0] == "voice") break;
+          if(v[0] == "voice" || v[0] == "voiceG") break;
           text += aux + " ";
         }
         
@@ -144,9 +145,17 @@ int main(int argc, char const *argv[]) {
         if(v[0] == "voice"){
           play_voice(m,s, sound);
         }
-        else
+        else if(v[0] == "voiceG"){
+
+          string group_name;
+          m >> group_name;
+          cout << "voice in group " << group_name << " ";
+          play_voice(m,s, sound);
+
+        }else{
           m >> name;
           cout << name <<" say : " << text << endl;
+        }
       }
       if (poll.has_input(console)) {
         // Handle input from console
@@ -165,7 +174,7 @@ int main(int argc, char const *argv[]) {
 
             m << userName;
             s.send(m);
-          }
+          } 
         }
       }
     }

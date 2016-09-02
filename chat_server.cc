@@ -190,6 +190,9 @@ public:
       const int16_t* sample;
       m >> sample;  
 
+      int tiempo;
+      m >> tiempo;
+
       string userName;
       m >> userName;
 
@@ -197,7 +200,7 @@ public:
 
       res << users[voice_to].identity() << "voice" << sampleCount << sampleRate << sampleChannelCount;
       res.add_raw(sample,sampleCount*sizeof(int16_t));
-      res << userName;
+      res << tiempo << userName;
       send(res);
     }
 
@@ -214,6 +217,9 @@ public:
       const int16_t* sample;
       m >> sample;  
 
+      int tiempo;
+      m >> tiempo;
+
       string userName;
       m >> userName;
     for (const auto& user : groups[voice_to]) {
@@ -225,7 +231,7 @@ public:
 
                 res << user.identity() << "voiceG" << voice_to<< sampleCount << sampleRate << sampleChannelCount;
                 res.add_raw(sample,sampleCount*sizeof(int16_t));
-                res << userName;
+                res << tiempo << userName;
                 cout << "Enviando a :" << user.userName() << " " << endl;
                 
                 // m << user.identity() << "in Group " << dest << " :" << text << nombre;
@@ -317,7 +323,7 @@ void dispatch(message &msg, ServerState &server) {
 
         server.newUser(name,password,sender);
 
-      }else if(action == "voice" && msg.parts() == 8){
+      }else if(action == "voice" && msg.parts() == 9){
         string voice_to;
         msg >> voice_to;
         if(server.conectado(voice_to) == true && server.exist(voice_to) == true){
@@ -352,6 +358,14 @@ void dispatch(message &msg, ServerState &server) {
           msg >> user;
           server.addToGroup(nameGroup, user, sender);
           cout << "El usuario " << user << " A accedido al grupo : " << nameGroup << endl;
+
+       } else if(action == "call" && msg.parts() == 4){
+
+          string dest;
+          msg >> dest;
+          string name_sender;
+          msg >> name_sender;
+          server.sendMessage(dest, action, name_sender);
 
        } else if(msg.parts() >=2){
             string aux;

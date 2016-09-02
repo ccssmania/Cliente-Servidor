@@ -1,0 +1,3 @@
+// estado de un servidor
+
+es la informacion que se va a guardar para que cumpla una funcion

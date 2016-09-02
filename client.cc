@@ -64,7 +64,11 @@ int main(int argc, char *argv[]) {
       m1 += aux + " ";
     }
     
+<<<<<<< HEAD
     if( op1 == op4 && op2 == op3) req << op << op1 << op2 << op3 << op4 << m << m1; // se guardan los valores en req que es de tipo message
+=======
+    if( op1 == op4) req << op << op1 << op2 << op3 << op4 << m << m1; // se guardan los valores en req que es de tipo message
+>>>>>>> 2e130580dab58805936f958d34b4e0566f1c9558
     else {                                                            
       cout << " operadores invalidos " << endl; // solo si la matriz no se puede multiplicar
       return 0;

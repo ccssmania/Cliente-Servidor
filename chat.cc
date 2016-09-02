@@ -146,12 +146,20 @@ void play_voice(message &m, socket &s, Sound &sound){
 
   }
 }*/
+<<<<<<< HEAD
 void server(message &m,socket &s,string &userName, bool &call_state, Sound &sound, SoundBufferRecorder &recorder, thread *speak){
+=======
+void server(message &m,socket &s,string &userName, bool &call_state, Sound &sound, SoundBufferRecorder &recorder){
+>>>>>>> 2e130580dab58805936f958d34b4e0566f1c9558
   vector < string > v;
   string text;
   string aux;
   string name;
+<<<<<<< HEAD
   
+=======
+  thread *speak;
+>>>>>>> 2e130580dab58805936f958d34b4e0566f1c9558
   v.clear();
   //cout << "msg parts " << m.parts()<< endl;
   for(int i = 0; i < m.parts() - 1; i++){
@@ -192,8 +200,8 @@ void server(message &m,socket &s,string &userName, bool &call_state, Sound &soun
   }
 }
 
+
 void consola(vector< string > &tokens, socket &s, string &userName, Sound &sound, SoundBufferRecorder &recorder, bool &call_state, thread *speak2){
-  
   if(tokens[0] == "voice" && tokens.size() == 2){
       voice(tokens,s,userName, recorder);
     }else if(tokens[0] == "call"){
@@ -209,6 +217,7 @@ void consola(vector< string > &tokens, socket &s, string &userName, Sound &sound
       cout << "la llamada se ha cancelado" << endl;
       speak2->join();
       delete speak2;
+      cout << "call " << tokens[1] << endl;
     }
     else{
       message m;
@@ -242,8 +251,11 @@ int main(int argc, char const *argv[]) {
   cout << "Connecting to: " << sckt << endl;
   s.connect(sckt);
 
+
   thread *speak;
   thread *speak2;
+
+
   message login;
   login << "login" << userName << breakword;
   s.send(login);

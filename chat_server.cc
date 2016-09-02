@@ -323,7 +323,7 @@ void dispatch(message &msg, ServerState &server) {
 
         server.newUser(name,password,sender);
 
-      }else if(action == "voice" ){
+      }else if(action == "voice" && msg.parts() == 9){
         string voice_to;
         msg >> voice_to;
         if(server.conectado(voice_to) == true && server.exist(voice_to) == true){

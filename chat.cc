@@ -74,10 +74,10 @@ void voice_call(socket &s, string userName, SoundBufferRecorder &recorder,
   while (call_state) {
     vector<string> v;
     recorder.start();
-    int tiempo = 500;
+    int tiempo = 2000;
     sleep(milliseconds(tiempo));
     recorder.stop();
-    v.push_back("voice");
+    v.push_back("voicec");
     v.push_back(name_sender);
     // tokens.push_front("voice");
     const SoundBuffer &buffer = recorder.getBuffer();
@@ -102,16 +102,16 @@ SoundBuffer reconstruction(message &m) {
   return buffer;
 }
 
-void play_sound_call(message &m, Sound &sound, bool &call_state) {
+void play_sound_call(message &m, socket &s, Sound &sound) {
   SoundBuffer buffer = reconstruction(m);
   int tiempo;
   m >> tiempo;
   string name;
   m >> name;
-  cout << "voice from: " << endl;
+  // cout << "voice from: " << endl;
   sound.setBuffer(buffer);
   sound.play();
-  sleep(milliseconds(500));
+  sleep(milliseconds(tiempo));
 }
 
 void play_voice(message &m, socket &s, Sound &sound) {
@@ -148,7 +148,9 @@ void server(message &m, socket &s, string &userName, bool &call_state,
   for (int i = 0; i < m.parts() - 1; i++) {
     m >> aux;
     v.push_back(aux);
-    if (v[0] == "voice" || v[0] == "voiceG" || v[0] == "call") break;
+    if (v[0] == "voice" || v[0] == "voiceG" || v[0] == "call" ||
+        v[0] == "voicec")
+      break;
     if (v[0] == "stop" && v[1] == "call") {
       call_state = false;
       break;
@@ -160,6 +162,9 @@ void server(message &m, socket &s, string &userName, bool &call_state,
   // cout << name << " asfasdfa " << m.parts() << endl;
   if (v[0] == "voice") {
     play_voice(m, s, sound);
+  }
+  if (v[0] == "voicec") {
+    play_sound_call(m, s, sound);
   } else if (v[0] == "voiceG") {
     string group_name;
     m >> group_name;
@@ -167,6 +172,7 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     play_voice(m, s, sound);
 
   } else if (v[0] == "call") {
+    cout << "Llamada entrante " << endl;
     call_state = true;
     string name_sender;
     m >> name_sender;

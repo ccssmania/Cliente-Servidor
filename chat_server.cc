@@ -171,7 +171,7 @@ class ServerState {
       }
     }
   }
-  void send_voice(message &m, const string &voice_to) {
+  void send_voice(message &m, const string &voice_to, const string &action) {
     size_t sampleCount;
     m >> sampleCount;
 
@@ -192,7 +192,7 @@ class ServerState {
 
     message res;
 
-    res << users[voice_to].identity() << "voice" << sampleCount << sampleRate
+    res << users[voice_to].identity() << action << sampleCount << sampleRate
         << sampleChannelCount;
     res.add_raw(sample, sampleCount * sizeof(int16_t));
     res << tiempo << userName;
@@ -321,7 +321,7 @@ void dispatch(message &msg, ServerState &server) {
       msg >> voice_to;
       if (server.conectado(voice_to) == true &&
           server.exist(voice_to) == true) {
-        server.send_voice(msg, voice_to);
+        server.send_voice(msg, voice_to, action);
 
       } else if (server.isGroup(voice_to)) {
         server.send_voiceGroup(msg, voice_to, sender);
@@ -332,6 +332,21 @@ void dispatch(message &msg, ServerState &server) {
         server.send(err);
       }
 
+    } else if (action == "voicec" && msg.parts() == 9) {
+      string voice_to;
+      msg >> voice_to;
+      if (server.conectado(voice_to) == true &&
+          server.exist(voice_to) == true) {
+        server.send_voice(msg, voice_to, action);
+
+      } else if (server.isGroup(voice_to)) {
+        server.send_voiceGroup(msg, voice_to, sender);
+      } else {
+        message err;
+        err << sender << "  el usurio no existe o no esta conectado "
+            << "server";
+        server.send(err);
+      }
     } else if (action == "newGroup" && msg.parts() == 4) {
       string name_group;
       msg >> name_group;

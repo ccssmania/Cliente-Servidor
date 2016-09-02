@@ -82,7 +82,7 @@ class ServerState {
                    const string &sender) {
     message m;
     // users[dest].identity;
-    cout << "NOMBRE :" << sender << endl;
+    cout << "NOMBRE :" << dest << endl;
     m << users[dest].identity() << text << sender;
 
     send(m);
@@ -287,10 +287,10 @@ void dispatch(message &msg, ServerState &server) {
 
     cout << "action " << action << endl;
 
-    cout << "partes del mensaje : " << msg.parts() << endl;
+    // cout << "partes del mensaje : " << msg.parts() << endl;
 
     bool estado = server.conectado(action);
-    cout << "estado :" << estado << endl;
+    // cout << "estado :" << estado << endl;
 
     if (action == "login") {
       login(msg, sender, server);
@@ -299,15 +299,13 @@ void dispatch(message &msg, ServerState &server) {
                server.exist(action) == true) {
       sendMessage(msg, action, sender, server);
 
-    } else if (
-        action ==
-        "singUp") {  //---------------------------------------------------------------------
+    } else if (action == "singUp") {
+      //---------------------------------------------------------------------
 
       singUp(msg, sender, server);  //                          hacen lo mismo
 
-    } else if (
-        action ==
-        "newUser") {  //----------------------------------------------------------------
+    } else if (action == "newUser") {
+      //----------------------------------------------------------------
 
       string name;
       msg >> name;
@@ -372,6 +370,13 @@ void dispatch(message &msg, ServerState &server) {
       msg >> name_sender;
       server.sendMessage(dest, action, name_sender);
 
+    } else if (action == "stop" && msg.parts() == 4) {
+      string dest;
+      msg >> dest;
+
+      string name_sender;
+      msg >> name_sender;
+      server.sendMessage(dest, action, name_sender);
     } else if (msg.parts() >= 2) {
       string aux;
       string text = action + " ";

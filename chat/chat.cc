@@ -74,7 +74,7 @@ void voice_call(socket &s, string userName, SoundBufferRecorder &recorder,
   while (call_state) {
     vector<string> v;
     recorder.start();
-    int tiempo = 2000;
+    int tiempo = 1000;
     sleep(milliseconds(tiempo));
     recorder.stop();
     v.push_back("voicec");
@@ -83,6 +83,7 @@ void voice_call(socket &s, string userName, SoundBufferRecorder &recorder,
     const SoundBuffer &buffer = recorder.getBuffer();
     send_voice(buffer, v, s, userName, tiempo);
   }
+  cout << "la llamada se ha cancelado" << endl;
 }
 
 SoundBuffer reconstruction(message &m) {
@@ -151,10 +152,8 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     if (v[0] == "voice" || v[0] == "voiceG" || v[0] == "call" ||
         v[0] == "voicec")
       break;
-    if (v[0] == "stop" && v[1] == "call") {
-      call_state = false;
-      break;
-    }
+    if (v[0] == "stop") break;
+
     text += aux + " ";
   }
 
@@ -181,10 +180,8 @@ void server(message &m, socket &s, string &userName, bool &call_state,
                        ref(call_state), name_sender);
     // speak.join();
 
-  } else if (v[0] == "stop" && v[1] == "call") {
+  } else if (v[0] == "stop") {
     call_state = false;
-    speak->join();
-    delete speak;
 
   } else {
     m >> name;
@@ -193,11 +190,13 @@ void server(message &m, socket &s, string &userName, bool &call_state,
 }
 
 void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
-             SoundBufferRecorder &recorder, bool &call_state, thread *speak2) {
+             SoundBufferRecorder &recorder, bool &call_state, thread *speak2,
+             string &userTocall) {
   if (tokens[0] == "voice" && tokens.size() == 2) {
     voice(tokens, s, userName, recorder);
   } else if (tokens[0] == "call") {
     message m;
+    userTocall = tokens[1];
     m << "call" << tokens[1] << userName;
     s.send(m);
     sleep(milliseconds(1000));
@@ -206,12 +205,12 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
                         ref(call_state), tokens[1]);
     // speak2.join();
     // cout << "call " << tokens[1] << endl;
-  } else if (tokens[0] == "stop" && tokens[1] == "call") {
+  } else if (tokens[0] == "stop") {
     call_state = false;
-    cout << "la llamada se ha cancelado" << endl;
-    speak2->join();
-    delete speak2;
-    cout << "call " << tokens[1] << endl;
+    cout << "user to call " << userTocall << endl;
+    message res;
+    res << "stop" << userTocall << userName;
+    s.send(res);
   } else {
     message m;
 
@@ -244,6 +243,7 @@ int main(int argc, char const *argv[]) {
 
   thread *speak;
   thread *speak2;
+  string userTocall;
 
   message login;
   login << "login" << userName << breakword;
@@ -267,10 +267,13 @@ int main(int argc, char const *argv[]) {
         getline(cin, input);
         if (input != "") {
           vector<string> tokens = tokenize(input);
-          consola(tokens, s, userName, sound, recorder, call_state, speak2);
+          consola(tokens, s, userName, sound, recorder, call_state, speak2,
+                  userTocall);
         }
       }
     }
   }
+  speak->join();
+  speak2->join();
   return EXIT_SUCCESS;
 }

@@ -146,20 +146,13 @@ void play_voice(message &m, socket &s, Sound &sound){
 
   }
 }*/
-<<<<<<< HEAD
+
 void server(message &m,socket &s,string &userName, bool &call_state, Sound &sound, SoundBufferRecorder &recorder, thread *speak){
-=======
-void server(message &m,socket &s,string &userName, bool &call_state, Sound &sound, SoundBufferRecorder &recorder){
->>>>>>> 2e130580dab58805936f958d34b4e0566f1c9558
   vector < string > v;
   string text;
   string aux;
   string name;
-<<<<<<< HEAD
-  
-=======
-  thread *speak;
->>>>>>> 2e130580dab58805936f958d34b4e0566f1c9558
+
   v.clear();
   //cout << "msg parts " << m.parts()<< endl;
   for(int i = 0; i < m.parts() - 1; i++){

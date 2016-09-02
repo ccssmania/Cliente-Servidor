@@ -26,7 +26,7 @@ void send_voice(const SoundBuffer &buffer, vector<string> &tokens, socket &s,
   size_t rate = buffer.getSampleRate();
   size_t channelCount = buffer.getChannelCount();
   message m;
-  cout << "tokens 0: " << tokens[0] << "tokens 1 : " << tokens[1] << endl;
+  // cout << "tokens 0: " << tokens[0] << "tokens 1 : " << tokens[1] << endl;
   m << tokens[0] << tokens[1] << count << rate << channelCount;
   m.add_raw(sample, count * sizeof(sf::Int16));
   m << tiempo << userName;

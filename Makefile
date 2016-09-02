@@ -11,7 +11,7 @@ server: server.cc
 	$(CC) -o server server.cc -lzmq -lzmqpp
 
 client_chat: chat.cc
-	$(CC) -o chat chat.cc -lzmq -lzmqpp -lsfml-system -lsfml-audio
+	$(CC) -o chat chat.cc -lzmq -lzmqpp -lsfml-system -lsfml-audio -pthread	
 
 server_chat: chat_server.cc
 	$(CC) -o server_chat chat_server.cc -lzmq -lzmqpp -lsfml-system -lsfml-audio

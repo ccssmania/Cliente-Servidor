@@ -79,6 +79,7 @@ void voice_call(socket &s, string userName, SoundBufferRecorder &recorder,
     recorder.stop();
     v.push_back("voicec");
     v.push_back(name_sender);
+    cout << " v[ 0 ] " << v[0] << endl;
     // tokens.push_front("voice");
     const SoundBuffer &buffer = recorder.getBuffer();
     send_voice(buffer, v, s, userName, tiempo);
@@ -150,16 +151,15 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     m >> aux;
     v.push_back(aux);
     if (v[0] == "voice" || v[0] == "voiceG" || v[0] == "call" ||
-        v[0] == "voicec")
+        v[0] == "voicec" || v[0] == "call_group" || v[0] == "stop")
       break;
-    if (v[0] == "stop") break;
 
     text += aux + " ";
   }
 
   // v.push_back(name);
   // cout << name << " asfasdfa " << m.parts() << endl;
-  if (v[0] == "voice") {
+  if (v[0] == "voice" && call_state != true) {
     play_voice(m, s, sound);
   }
   if (v[0] == "voicec") {
@@ -170,7 +170,7 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     cout << "voice in group " << group_name << " ";
     play_voice(m, s, sound);
 
-  } else if (v[0] == "call") {
+  } else if (v[0] == "call" && call_state != true) {
     cout << "Llamada entrante " << endl;
     call_state = true;
     string name_sender;
@@ -180,6 +180,12 @@ void server(message &m, socket &s, string &userName, bool &call_state,
                        ref(call_state), name_sender);
     // speak.join();
 
+  } else if (v[0] == "call_group" && call_state != true) {
+    call_state = true;
+    string name_group;
+    m >> name_group;
+    speak = new thread(voice_call, ref(s), userName, ref(recorder),
+                       ref(call_state), name_group);
   } else if (v[0] == "stop") {
     call_state = false;
 
@@ -205,9 +211,19 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
                         ref(call_state), tokens[1]);
     // speak2.join();
     // cout << "call " << tokens[1] << endl;
-  } else if (tokens[0] == "stop") {
+  } /*else if (tokens[0] == "call_group" && call_state != true) {
+    call_state == true;
+    message m;
+    userTocall = tokens[1];
+    m << "call_group" << tokens[1] << userName;
+    s.send(m);
+    sleep(milliseconds(800));
+    speak2 = new thread(voice_call, ref(s), userName, ref(recorder),
+                        ref(call_state), tokens[1]);
+
+  } */ else if (
+      tokens[0] == "stop") {
     call_state = false;
-    cout << "user to call " << userTocall << endl;
     message res;
     res << "stop" << userTocall << userName;
     s.send(res);

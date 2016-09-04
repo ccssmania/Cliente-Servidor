@@ -366,9 +366,24 @@ void dispatch(message &msg, ServerState &server) {
     } else if (action == "call" && msg.parts() == 4) {
       string dest;
       msg >> dest;
-      string name_sender;
-      msg >> name_sender;
-      server.sendMessage(dest, action, name_sender);
+      if (server.conectado(dest) == true && server.exist(dest) == true) {
+        string name_sender;
+        msg >> name_sender;
+        server.sendMessage(dest, action, name_sender);
+      } else if (server.isGroup_name(dest)) {
+        cout << "server.isGroup_name(dest))  " << server.isGroup_name(dest);
+        cout << endl;
+        string name_sender;
+        msg >> name_sender;
+        if (server.isGroup(name_sender)) {
+          server.sendGroupMessage(dest, dest, "call_group", sender);
+        } else {
+          message res;
+          res << sender << "el usuario no pertenece al grupo " << dest
+              << "server";
+          server.send(res);
+        }
+      }
 
     } else if (action == "stop" && msg.parts() == 4) {
       string dest;

@@ -79,7 +79,6 @@ void voice_call(socket &s, string userName, SoundBufferRecorder &recorder,
     recorder.stop();
     v.push_back("voicec");
     v.push_back(name_sender);
-    cout << " v[ 0 ] " << v[0] << endl;
     // tokens.push_front("voice");
     const SoundBuffer &buffer = recorder.getBuffer();
     send_voice(buffer, v, s, userName, tiempo);
@@ -167,8 +166,12 @@ void server(message &m, socket &s, string &userName, bool &call_state,
   } else if (v[0] == "voiceG") {
     string group_name;
     m >> group_name;
-    cout << "voice in group " << group_name << " ";
-    play_voice(m, s, sound);
+    if (call_state == true)
+      play_sound_call(m, s, sound);
+    else {
+      cout << "voice in group " << group_name << " ";
+      play_voice(m, s, sound);
+    }
 
   } else if (v[0] == "call" && call_state != true) {
     cout << "Llamada entrante " << endl;
@@ -181,6 +184,7 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     // speak.join();
 
   } else if (v[0] == "call_group" && call_state != true) {
+    cout << "Llamada entrante " << endl;
     call_state = true;
     string name_group;
     m >> name_group;

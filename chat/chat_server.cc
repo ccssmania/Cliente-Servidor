@@ -160,6 +160,15 @@ class ServerState {
       }
       return count;
   }*/
+  void sendCallGroup(const string &dest, const string &sender) {
+    for (const auto &user : groups[dest]) {
+      if (user.identity() != sender) {
+        message m;
+        m << user.identity() << "call_group" << dest;
+        send(m);
+      }
+    }
+  }
   void sendGroupMessage(const string &dest, const string &nombre,
                         const string &text, const string &sender) {
     for (const auto &user : groups[dest]) {
@@ -366,17 +375,19 @@ void dispatch(message &msg, ServerState &server) {
     } else if (action == "call" && msg.parts() == 4) {
       string dest;
       msg >> dest;
+      cout << "call" << endl;
       if (server.conectado(dest) == true && server.exist(dest) == true) {
         string name_sender;
         msg >> name_sender;
+        // cout << "call antes" << endl;
         server.sendMessage(dest, action, name_sender);
-      } else if (server.isGroup_name(dest)) {
-        cout << "server.isGroup_name(dest))  " << server.isGroup_name(dest);
+      } else if (server.isGroup(dest)) {
         cout << endl;
         string name_sender;
         msg >> name_sender;
-        if (server.isGroup(name_sender)) {
-          server.sendGroupMessage(dest, dest, "call_group", sender);
+
+        if (server.isGroup_name(name_sender)) {
+          server.sendCallGroup(dest, sender);
         } else {
           message res;
           res << sender << "el usuario no pertenece al grupo " << dest
@@ -384,7 +395,6 @@ void dispatch(message &msg, ServerState &server) {
           server.send(res);
         }
       }
-
     } else if (action == "stop" && msg.parts() == 4) {
       string dest;
       msg >> dest;

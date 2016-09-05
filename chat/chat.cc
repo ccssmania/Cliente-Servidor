@@ -74,7 +74,7 @@ void voice_call(socket &s, string userName, SoundBufferRecorder &recorder,
   while (call_state) {
     vector<string> v;
     recorder.start();
-    int tiempo = 1000;
+    int tiempo = 500;
     sleep(milliseconds(tiempo));
     recorder.stop();
     v.push_back("voicec");
@@ -206,6 +206,7 @@ void server(message &m, socket &s, string &userName, bool &call_state,
   } else {
     m >> name;
     cout << name << " say : " << text << endl;
+    if (v[0] == "se ha salido del grupo :") call_state = false;
   }
 }
 
@@ -228,6 +229,11 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
     call_state = false;
     message res;
     res << "stop" << userTocall << userName;
+    s.send(res);
+  } else if (tokens[0] == "salir") {
+    call_state = false;
+    message res;
+    res << "salir" << tokens[1] << userName;
     s.send(res);
   } else {
     message m;

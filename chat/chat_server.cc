@@ -128,7 +128,8 @@ class ServerState {
       return false;
   }
 
-  bool isGroup_name(string &name) {  // BUSCA UN GRUPO POR NOMBRE DEL USUARIO
+  bool isGroup_name(
+      const string &name) {  // BUSCA UN GRUPO POR NOMBRE DEL USUARIO
     string groupName;
     for (unordered_map<string, list<User>>::iterator i = groups.begin();
          i != groups.end(); i++) {
@@ -137,6 +138,24 @@ class ServerState {
       }
     }
     return false;
+  }
+
+  void exit_group(const string &name_sender, const string &name_group,
+                  const string &sender) {
+    if (isGroup(name_group)) {
+      list<User>::iterator user;
+      for (user = groups[name_group].begin(); user != groups[name_group].end();
+           user++) {
+        if ((*user).userName() == name_sender) {
+          groups[name_group].erase(user);
+          message res;
+          res << sender << "se ha salido del grupo : " << name_group
+              << "server";
+          send(res);
+          break;
+        }
+      }
+    }
   }
 
   string nameGroup(const string &name) {  // RETORNA EL NOMBRE DEL GRUPO AL CUAL
@@ -312,20 +331,20 @@ void dispatch(message &msg, ServerState &server) {
                server.exist(action) == true) {
       sendMessage(msg, action, sender, server);
 
-    } else if (action == "singUp") {
-      //---------------------------------------------------------------------
-
-      singUp(msg, sender, server);  //                          hacen lo mismo
-
     } else if (action == "newUser") {
-      //----------------------------------------------------------------
-
       string name;
       msg >> name;
-      string password;
-      msg >> password;
+      if (server.exist(name) == false) {
+        string password;
+        msg >> password;
 
-      server.newUser(name, password, sender);
+        server.newUser(name, password, sender);
+      } else {
+        message res;
+        res << sender << "El usuario ya existe"
+            << "server";
+        server.send(res);
+      }
 
     } else if (action == "voice" && msg.parts() == 9) {
       string voice_to;
@@ -363,13 +382,11 @@ void dispatch(message &msg, ServerState &server) {
       msg >> name_group;
       string name_creater;
       msg >> name_creater;
-
       server.newGroup(name_creater, name_group, sender);
 
     } else if (action == "addToGroup" && msg.parts() == 4) {
       string nameGroup;
       msg >> nameGroup;
-
       string user;
       msg >> user;
       server.addToGroup(nameGroup, user, sender);
@@ -405,7 +422,17 @@ void dispatch(message &msg, ServerState &server) {
 
       string name_sender;
       msg >> name_sender;
+
       server.sendMessage(dest, action, name_sender);
+
+    } else if (action == "salir" && msg.parts() == 4) {
+      string name_sender;
+      string name_group;
+
+      msg >> name_group;
+      msg >> name_sender;
+      server.exit_group(name_sender, name_group, sender);
+
     } else if (msg.parts() >= 2) {
       string aux;
       string text = action + " ";

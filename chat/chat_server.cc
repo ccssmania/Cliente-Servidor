@@ -267,6 +267,10 @@ void login(message &msg, const string &sender, ServerState &server) {
 
   if (server.login(userName, password, sender)) {
     cout << "User " << userName << " joins the chat server" << endl;
+    message m;
+    m << sender << "El usurio : " << userName << "se a unido al servidor"
+      << "server";
+    server.send(m);
 
   } else {
     cerr << "Wrong user/password " << endl;

@@ -451,6 +451,7 @@ int main(int argc, char *argv[]) {
   ServerState state(s);
   state.newUser("Gustavo", "123", "");
   state.newUser("Choque", "123", "");
+  state.newUser("Cristian", "123", "");
 
   while (true) {
     message req;

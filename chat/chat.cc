@@ -103,16 +103,21 @@ SoundBuffer reconstruction(message &m) {
   return buffer;
 }
 
-void play_sound_call(message &m, socket &s, Sound &sound) {
+void play_sound_call(message &m, socket &s, Sound &sound, bool call) {
   SoundBuffer buffer = reconstruction(m);
   int tiempo;
   m >> tiempo;
   string name;
   m >> name;
-  // cout << "voice from: " << endl;
-  sound.setBuffer(buffer);
-  sound.play();
-  sleep(milliseconds(tiempo));
+  if (call == true) {
+    sound.setBuffer(buffer);
+    sound.play();
+    sleep(milliseconds(1001));
+  } else {
+    sound.setBuffer(buffer);
+    sound.play();
+    sleep(milliseconds(tiempo));
+  }
 }
 
 void play_voice(message &m, socket &s, Sound &sound) {
@@ -138,7 +143,8 @@ void play_voice(message &m, socket &s, Sound &sound) {
 }*/
 
 void server(message &m, socket &s, string &userName, bool &call_state,
-            Sound &sound, SoundBufferRecorder &recorder, thread *speak) {
+            Sound &sound, SoundBufferRecorder &recorder, thread *speak,
+            thread *listen) {
   vector<string> v;
   string text;
   string aux;
@@ -162,13 +168,13 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     play_voice(m, s, sound);
   }
   if (v[0] == "voicec") {
-    play_sound_call(m, s, sound);
+    play_sound_call(m, s, sound, false);
   } else if (v[0] == "voiceG") {
     string group_name;
     m >> group_name;
-    if (call_state == true)
-      play_sound_call(m, s, sound);
-    else {
+    if (call_state == true) {
+      listen = new thread(play_sound_call, ref(m), ref(s), ref(sound), true);
+    } else {
       cout << "voice in group " << group_name << " ";
       play_voice(m, s, sound);
     }
@@ -213,20 +219,8 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
     call_state = true;
     speak2 = new thread(voice_call, ref(s), userName, ref(recorder),
                         ref(call_state), tokens[1]);
-    // speak2.join();
-    // cout << "call " << tokens[1] << endl;
-  } /*else if (tokens[0] == "call_group" && call_state != true) {
-    call_state == true;
-    message m;
-    userTocall = tokens[1];
-    m << "call_group" << tokens[1] << userName;
-    s.send(m);
-    sleep(milliseconds(800));
-    speak2 = new thread(voice_call, ref(s), userName, ref(recorder),
-                        ref(call_state), tokens[1]);
 
-  } */ else if (
-      tokens[0] == "stop") {
+  } else if (tokens[0] == "stop") {
     call_state = false;
     message res;
     res << "stop" << userTocall << userName;
@@ -263,6 +257,7 @@ int main(int argc, char const *argv[]) {
 
   thread *speak;
   thread *speak2;
+  thread *listen;
   string userTocall;
 
   message login;
@@ -279,7 +274,7 @@ int main(int argc, char const *argv[]) {
         // Handle input in socket
         message m;
         s.receive(m);
-        server(m, s, userName, call_state, sound, recorder, speak);
+        server(m, s, userName, call_state, sound, recorder, speak, listen);
       }
       if (poll.has_input(console)) {
         // Handle input from console
@@ -295,5 +290,6 @@ int main(int argc, char const *argv[]) {
   }
   speak->join();
   speak2->join();
+  listen->join();
   return EXIT_SUCCESS;
 }

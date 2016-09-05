@@ -160,8 +160,19 @@ void server(message &m, socket &s, string &userName, bool &call_state,
 
   // v.push_back(name);
   // cout << name << " asfasdfa " << m.parts() << endl;
-  if (v[0] == "voice" && call_state != true) {
-    play_voice(m, s, sound);
+  if (v[0] == "voice") {
+    if (call_state != true)
+      play_voice(m, s, sound);
+    else {
+      for (int i = 0; i < m.parts() - 2; i++) {
+        string aux;
+        m >> aux;
+      }
+      m >> name;
+      message res;
+      res << name << "Estoy en otra llamada" << userName;
+      s.send(res);
+    }
   }
   if (v[0] == "voicec") {
     play_sound_call(m, s, sonidos, bufferes, i);
@@ -183,30 +194,53 @@ void server(message &m, socket &s, string &userName, bool &call_state,
       play_voice(m, s, sound);
     }
 
-  } else if (v[0] == "call" && call_state != true) {
-    cout << "Llamada entrante " << endl;
-    call_state = true;
-    string name_sender;
-    m >> name_sender;
-    // cout << "userName: " << userName << endl;
-    speak = new thread(voice_call, ref(s), userName, ref(recorder),
-                       ref(call_state), name_sender);
-    // speak.join();
+  } else if (v[0] == "call") {
+    if (call_state != true) {
+      cout << "Llamada entrante " << endl;
+      call_state = true;
+      string name_sender;
+      m >> name_sender;
+      // cout << "userName: " << userName << endl;
+      speak = new thread(voice_call, ref(s), userName, ref(recorder),
+                         ref(call_state), name_sender);
+    } else {
+      for (int i = 0; i < m.parts() - 2; i++) {
+        string aux;
+        m >> aux;
+      }
+      m >> name;
+      message res;
+      res << name << "Estoy en otra llamada" << userName;
+      s.send(res);
+    }
 
-  } else if (v[0] == "call_group" && call_state != true) {
-    cout << "Llamada entrante " << endl;
-    call_state = true;
-    string name_group;
-    m >> name_group;
-    speak = new thread(voice_call, ref(s), userName, ref(recorder),
-                       ref(call_state), name_group);
+  } else if (v[0] == "call_group") {
+    if (call_state != true) {
+      cout << "Llamada entrante " << endl;
+      call_state = true;
+      string name_group;
+      m >> name_group;
+      speak = new thread(voice_call, ref(s), userName, ref(recorder),
+                         ref(call_state), name_group);
+    } else {
+      for (int i = 0; i < m.parts() - 2; i++) {
+        string aux;
+        m >> aux;
+      }
+      m >> name;
+      message res;
+      res << name << "Estoy en otra llamada" << userName;
+      message res2;
+      res2 << "stop" << name << userName;
+      s.send(res);
+      s.send(res2);
+    }
   } else if (v[0] == "stop") {
     call_state = false;
 
   } else {
     m >> name;
     cout << name << " say : " << text << endl;
-    if (v[0] == "se ha salido del grupo :") call_state = false;
   }
 }
 
@@ -231,10 +265,16 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
     res << "stop" << userTocall << userName;
     s.send(res);
   } else if (tokens[0] == "salir") {
-    call_state = false;
-    message res;
-    res << "salir" << tokens[1] << userName;
-    s.send(res);
+    if (tokens.size() == 2) {
+      call_state = false;
+      message res;
+      res << "salir" << tokens[1] << userName;
+      s.send(res);
+    } else {
+      cout << "Tienes que decir el nombre del grupo del que te vas a salir"
+           << endl;
+    }
+
   } else {
     message m;
 

@@ -319,11 +319,6 @@ void dispatch(message &msg, ServerState &server) {
 
     cout << "action " << action << endl;
 
-    // cout << "partes del mensaje : " << msg.parts() << endl;
-
-    bool estado = server.conectado(action);
-    // cout << "estado :" << estado << endl;
-
     if (action == "login") {
       login(msg, sender, server);
 
@@ -400,8 +395,14 @@ void dispatch(message &msg, ServerState &server) {
       if (server.conectado(dest) == true && server.exist(dest) == true) {
         string name_sender;
         msg >> name_sender;
-        // cout << "call antes" << endl;
-        server.sendMessage(dest, action, name_sender);
+        if (name_sender != dest) {
+          server.sendMessage(dest, action, name_sender);
+        } else {
+          message res;
+          res << sender << "no te puedes llamar a ti mismo "
+              << "server";
+          server.send(res);
+        }
       } else if (server.isGroup(dest)) {
         cout << endl;
         string name_sender;

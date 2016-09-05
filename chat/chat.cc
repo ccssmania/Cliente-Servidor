@@ -103,21 +103,18 @@ SoundBuffer reconstruction(message &m) {
   return buffer;
 }
 
-void play_sound_call(message &m, socket &s, Sound &sound, bool call) {
+void play_sound_call(message &m, socket &s, vector<Sound> &sonidos,
+                     vector<SoundBuffer> &bufferes, int &i) {
   SoundBuffer buffer = reconstruction(m);
+  bufferes[i] = buffer;
   int tiempo;
   m >> tiempo;
   string name;
   m >> name;
-  if (call == true) {
-    sound.setBuffer(buffer);
-    sound.play();
-    sleep(milliseconds(1001));
-  } else {
-    sound.setBuffer(buffer);
-    sound.play();
-    sleep(milliseconds(tiempo));
-  }
+  // cout << "voice from: " << endl;
+  sonidos[i].setBuffer(bufferes[i]);
+  sonidos[i].play();
+  sleep(milliseconds(1000));
 }
 
 void play_voice(message &m, socket &s, Sound &sound) {
@@ -138,13 +135,13 @@ void play_voice(message &m, socket &s, Sound &sound) {
     sleep(10000);
     stop
     send
-
   }
 }*/
 
 void server(message &m, socket &s, string &userName, bool &call_state,
             Sound &sound, SoundBufferRecorder &recorder, thread *speak,
-            thread *listen) {
+            std::vector<SoundBuffer> &bufferes, std::vector<Sound> &sonidos,
+            int &i) {
   vector<string> v;
   string text;
   string aux;
@@ -168,12 +165,20 @@ void server(message &m, socket &s, string &userName, bool &call_state,
     play_voice(m, s, sound);
   }
   if (v[0] == "voicec") {
-    play_sound_call(m, s, sound, false);
+    play_sound_call(m, s, sonidos, bufferes, i);
+    i++;
+    if (i >= 16) {
+      i = 0;
+    }
   } else if (v[0] == "voiceG") {
     string group_name;
     m >> group_name;
     if (call_state == true) {
-      listen = new thread(play_sound_call, ref(m), ref(s), ref(sound), true);
+      play_sound_call(m, s, sonidos, bufferes, i);
+      i++;
+      if (i >= 16) {
+        i = 0;
+      }
     } else {
       cout << "voice in group " << group_name << " ";
       play_voice(m, s, sound);
@@ -244,6 +249,10 @@ int main(int argc, char const *argv[]) {
   Sound sound;  // objeto de tipo Sound
   SoundBufferRecorder recorder;
 
+  std::vector<SoundBuffer> bufferes(20);
+  std::vector<Sound> sonidos(20);
+  int i = 0;
+
   string address(argv[1]);
   string userName(argv[2]);
   string breakword(argv[3]);
@@ -274,7 +283,8 @@ int main(int argc, char const *argv[]) {
         // Handle input in socket
         message m;
         s.receive(m);
-        server(m, s, userName, call_state, sound, recorder, speak, listen);
+        server(m, s, userName, call_state, sound, recorder, speak, bufferes,
+               sonidos, i);
       }
       if (poll.has_input(console)) {
         // Handle input from console

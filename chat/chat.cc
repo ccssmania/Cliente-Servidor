@@ -114,7 +114,6 @@ void play_sound_call(message &m, socket &s, vector<Sound> &sonidos,
   // cout << "voice from: " << endl;
   sonidos[i].setBuffer(bufferes[i]);
   sonidos[i].play();
-  sleep(milliseconds(1000));
 }
 
 void play_voice(message &m, socket &s, Sound &sound) {

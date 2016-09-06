@@ -252,6 +252,12 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
     speak2 = new thread(voice_call, ref(s), userName, ref(recorder),
                         ref(call_state), tokens[1]);
 
+  } else if (tokens[0] == "newUser") {
+    userName = tokens[1];
+    message m;
+    for (const string &str : tokens) m << str;
+    m << userName;
+    s.send(m);
   } else if (tokens[0] == "stop") {
     call_state = false;
     message res;
@@ -282,7 +288,7 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
 }
 
 int main(int argc, char const *argv[]) {
-  if (argc != 4) {
+  if (argc != 2) {
     cerr << "Invalid arguments" << endl;
     return EXIT_FAILURE;
   }
@@ -295,8 +301,9 @@ int main(int argc, char const *argv[]) {
   int i = 0;
 
   string address(argv[1]);
-  string userName(argv[2]);
-  string breakword(argv[3]);
+  string action;
+  string userName;
+  string password;
   string sckt("tcp://");
   sckt += address;
   context ctx;
@@ -310,9 +317,7 @@ int main(int argc, char const *argv[]) {
   thread *listen;
   string userTocall;
 
-  message login;
-  login << "login" << userName << breakword;
-  s.send(login);
+  cout << "ingrese la accion a realizar" << endl;
   bool call_state = false;
   int console = fileno(stdin);
   poller poll;

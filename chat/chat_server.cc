@@ -87,8 +87,6 @@ class ServerState {
   void sendMessage(const string &dest, const string &text,
                    const string &sender) {
     message m;
-    // users[dest].identity;
-    cout << "NOMBRE :" << dest << endl;
     m << users[dest].identity() << text << sender;
 
     send(m);
@@ -318,6 +316,7 @@ void sendMessage(message &msg, const string dest, const string &sender,
   }
   string name;
   msg >> name;
+  cout << " name " << name << endl;
   if (server.contact_exist(dest, name))
     server.sendMessage(dest, text, name);
   else
@@ -340,6 +339,10 @@ void login(message &msg, const string &sender, ServerState &server) {
 
   } else {
     cerr << "Wrong user/password " << endl;
+    message res;
+    res << sender << "Wrong user/password "
+        << "server";
+    server.send(res);
   }
 }
 
@@ -358,8 +361,6 @@ void dispatch(message &msg, ServerState &server, bool &call_group_state) {
     string action;
     msg >> action;
 
-    cout << "action " << action << endl;
-
     if (action == "login") {
       login(msg, sender, server);
 
@@ -374,14 +375,17 @@ void dispatch(message &msg, ServerState &server, bool &call_group_state) {
       string name_sender;
       msg >> name_sender;
       server.addFriend(sender, friendName, name_sender);
-    } else if (action == "newUser") {
+    } else if (action == "newUser" && msg.parts() == 5) {
       string name;
       msg >> name;
       if (server.exist(name) == false) {
         string password;
         msg >> password;
-
         server.newUser(name, password, sender);
+        message res;
+        res << sender << "el usuario : " << name << "ha sido creado"
+            << "server";
+        server.send(res);
       } else {
         message res;
         res << sender << "El usuario ya existe"
@@ -500,6 +504,7 @@ void dispatch(message &msg, ServerState &server, bool &call_group_state) {
 
       msg >> name_group;
       msg >> name_sender;
+      call_group_state = false;
       if (server.exist(name_sender) && server.conectado(name_sender)) {
         server.exit_group(name_sender, name_group, sender);
       } else
@@ -548,9 +553,6 @@ int main(int argc, char *argv[]) {
   s.bind("tcp://*:4242");
   bool call_group_state = false;
   ServerState state(s);
-  state.newUser("Gustavo", "123", "");
-  state.newUser("Choque", "123", "");
-  state.newUser("Cristian", "123", "");
 
   while (true) {
     message req;

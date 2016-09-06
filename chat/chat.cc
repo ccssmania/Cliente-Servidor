@@ -170,11 +170,10 @@ void server(message &m, socket &s, string &userName, bool &call_state,
       }
       m >> name;
       message res;
-      res << name << "Estoy en otra llamada" << userName;
+      res << "stop" << name << userName;
       s.send(res);
     }
-  }
-  if (v[0] == "voicec") {
+  } else if (v[0] == "voicec") {
     play_sound_call(m, s, sonidos, bufferes, i);
     i++;
     if (i >= 16) {
@@ -210,7 +209,7 @@ void server(message &m, socket &s, string &userName, bool &call_state,
       }
       m >> name;
       message res;
-      res << name << "Estoy en otra llamada" << userName;
+      res << "stop" << name << userName;
       s.send(res);
     }
 
@@ -229,11 +228,8 @@ void server(message &m, socket &s, string &userName, bool &call_state,
       }
       m >> name;
       message res;
-      res << name << "Estoy en otra llamada" << userName;
-      message res2;
-      res2 << "stop" << name << userName;
+      res << "stop" << name << userName;
       s.send(res);
-      s.send(res2);
     }
   } else if (v[0] == "stop") {
     call_state = false;

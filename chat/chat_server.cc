@@ -35,8 +35,14 @@ class User {
   const string &identity() const { return netId; }
 
   const string &userName() const { return name; }
-
+  void addContact(string contact) { contacts.push_back(contact); }
   bool state() { return connected; }
+  bool inContacts(const std::string &user) {
+    for (const auto &contact : contacts) {
+      if (contact == user) return true;
+    }
+    return false;
+  }
 };
 
 class ServerState {
@@ -217,14 +223,21 @@ class ServerState {
 
     string userName;
     m >> userName;
+    if (contact_exist(voice_to, userName) == true) {
+      message res;
 
-    message res;
-
-    res << users[voice_to].identity() << action << sampleCount << sampleRate
-        << sampleChannelCount;
-    res.add_raw(sample, sampleCount * sizeof(int16_t));
-    res << tiempo << userName;
-    send(res);
+      res << users[voice_to].identity() << action << sampleCount << sampleRate
+          << sampleChannelCount;
+      res.add_raw(sample, sampleCount * sizeof(int16_t));
+      res << tiempo << userName;
+      send(res);
+    } else {
+      message res;
+      res << users[userName].identity()
+          << "el usuario no esta en tu lista de amigos"
+          << "server";
+      send(res);
+    }
   }
 
   void send_voiceGroup(message &m, const string &voice_to,
@@ -246,23 +259,54 @@ class ServerState {
 
     string userName;
     m >> userName;
-    for (const auto &user : groups[voice_to]) {
-      if (user.identity() != sender) {
-        message res;
+    if (isGroup_name(userName)) {
+      for (const auto &user : groups[voice_to]) {
+        if (user.identity() != sender) {
+          message res;
 
-        res << user.identity() << "voiceG" << voice_to << sampleCount
-            << sampleRate << sampleChannelCount;
-        res.add_raw(sample, sampleCount * sizeof(int16_t));
-        res << tiempo << userName;
-        cout << "Enviando a :" << user.userName() << " " << endl;
+          res << user.identity() << "voiceG" << voice_to << sampleCount
+              << sampleRate << sampleChannelCount;
+          res.add_raw(sample, sampleCount * sizeof(int16_t));
+          res << tiempo << userName;
+          cout << "Enviando a :" << user.userName() << " " << endl;
 
-        // m << user.identity() << "in Group " << dest << " :" << text <<
-        // nombre;
-        send(res);
+          // m << user.identity() << "in Group " << dest << " :" << text <<
+          // nombre;
+          send(res);
+        }
       }
+    } else {
+      message res;
+      res << sender << "usted no se encuentra en ese grupo"
+          << "server";
+      send(res);
     }
   }
+  void addFriend(string &sender, string &friendName,
+                 const string &name_sender) {
+    users[name_sender].addContact(friendName);
+    users[friendName].addContact(name_sender);
+    message rep;
+
+    rep << sender << "New friend added to your contact list"
+        << "Server";
+    send(rep);
+  }
+
+  bool contact_exist(const string &name_friend, const string &userName) {
+    if (users[userName].inContacts(name_friend)) {
+      return true;
+    } else
+      return false;
+  }
 };
+
+void is_not_friend(ServerState &server, const string &sender) {
+  message res;
+  res << sender << "El usuario no esta en tu lista de amigos"
+      << "server";
+  server.send(res);
+}
 
 void sendMessage(message &msg, const string dest, const string &sender,
                  ServerState &server) {
@@ -274,7 +318,10 @@ void sendMessage(message &msg, const string dest, const string &sender,
   }
   string name;
   msg >> name;
-  server.sendMessage(dest, text, name);
+  if (server.contact_exist(dest, name))
+    server.sendMessage(dest, text, name);
+  else
+    is_not_friend(server, sender);
 }
 
 void login(message &msg, const string &sender, ServerState &server) {
@@ -296,20 +343,14 @@ void login(message &msg, const string &sender, ServerState &server) {
   }
 }
 
-void singUp(message &msg, const string &sender, ServerState &server) {
-  string userName;
-  msg >> userName;
-  string password;
-  msg >> password;
-  server.newUser(userName, password, sender);
+void nonregister(const string &sender, ServerState &server) {
+  message res;
+  res << sender << "usted no se encuentra registrado"
+      << "server";
+  server.send(res);
 }
 
-/*void sendMessage_group(const string &name, const string text, ServerState
-&server){
-  server.sendMessage_group(name,text);
-}*/
-
-void dispatch(message &msg, ServerState &server) {
+void dispatch(message &msg, ServerState &server, bool &call_group_state) {
   if (msg.parts() > 1) {
     string sender;
     msg >> sender;
@@ -326,6 +367,13 @@ void dispatch(message &msg, ServerState &server) {
                server.exist(action) == true) {
       sendMessage(msg, action, sender, server);
 
+    } else if (action == "addFriend" && msg.parts() == 4) {
+      string friendName;
+      msg >> friendName;
+
+      string name_sender;
+      msg >> name_sender;
+      server.addFriend(sender, friendName, name_sender);
     } else if (action == "newUser") {
       string name;
       msg >> name;
@@ -377,16 +425,25 @@ void dispatch(message &msg, ServerState &server) {
       msg >> name_group;
       string name_creater;
       msg >> name_creater;
-      server.newGroup(name_creater, name_group, sender);
-
+      if (server.exist(name_creater) && server.conectado(name_creater))
+        server.newGroup(name_creater, name_group, sender);
+      else {
+        nonregister(sender, server);
+      }
     } else if (action == "addToGroup" && msg.parts() == 4) {
       string nameGroup;
       msg >> nameGroup;
       string user;
       msg >> user;
-      server.addToGroup(nameGroup, user, sender);
-      cout << "El usuario " << user << " A accedido al grupo : " << nameGroup
-           << endl;
+      if (server.exist(user) && server.conectado(user)) {
+        server.addToGroup(nameGroup, user, sender);
+        if (call_group_state == true) {
+          server.sendMessage(user, "call_group", nameGroup);
+        }
+        cout << "El usuario " << user << " A accedido al grupo : " << nameGroup
+             << endl;
+      } else
+        nonregister(sender, server);
 
     } else if (action == "call" && msg.parts() == 4) {
       string dest;
@@ -395,14 +452,22 @@ void dispatch(message &msg, ServerState &server) {
       if (server.conectado(dest) == true && server.exist(dest) == true) {
         string name_sender;
         msg >> name_sender;
-        if (name_sender != dest) {
-          server.sendMessage(dest, action, name_sender);
-        } else {
-          message res;
-          res << sender << "no te puedes llamar a ti mismo "
-              << "server";
-          server.send(res);
-        }
+        if (server.contact_exist(dest, name_sender)) {
+          if (name_sender != dest) {
+            if (server.exist(name_sender)) {
+              server.sendMessage(dest, action, name_sender);
+            } else {
+              nonregister(sender, server);
+            }
+          } else {
+            message res;
+            res << sender << "no te puedes llamar a ti mismo "
+                << "server";
+            server.send(res);
+          }
+        } else
+          is_not_friend(server, sender);
+
       } else if (server.isGroup(dest)) {
         cout << endl;
         string name_sender;
@@ -410,6 +475,7 @@ void dispatch(message &msg, ServerState &server) {
 
         if (server.isGroup_name(name_sender)) {
           server.sendCallGroup(dest, sender);
+          call_group_state = true;
         } else {
           message res;
           res << sender << "el usuario no pertenece al grupo " << dest
@@ -423,8 +489,10 @@ void dispatch(message &msg, ServerState &server) {
 
       string name_sender;
       msg >> name_sender;
-
-      server.sendMessage(dest, action, name_sender);
+      if (server.exist(name_sender) && server.conectado(name_sender)) {
+        server.sendMessage(dest, action, name_sender);
+      } else
+        nonregister(sender, server);
 
     } else if (action == "salir" && msg.parts() == 4) {
       string name_sender;
@@ -432,7 +500,10 @@ void dispatch(message &msg, ServerState &server) {
 
       msg >> name_group;
       msg >> name_sender;
-      server.exit_group(name_sender, name_group, sender);
+      if (server.exist(name_sender) && server.conectado(name_sender)) {
+        server.exit_group(name_sender, name_group, sender);
+      } else
+        nonregister(sender, server);
 
     } else if (msg.parts() >= 2) {
       string aux;
@@ -445,7 +516,7 @@ void dispatch(message &msg, ServerState &server) {
       string name;
       cout << "text : " << text << endl;
       msg >> name;
-      if (server.isGroup(action)) {
+      if (server.isGroup(action) && server.isGroup_name(name)) {
         server.sendGroupMessage(action, name, text, sender);
 
       } else if (server.isGroup_name(name)) {
@@ -475,7 +546,7 @@ int main(int argc, char *argv[]) {
   context ctx;
   socket s(ctx, socket_type::xreply);
   s.bind("tcp://*:4242");
-
+  bool call_group_state = false;
   ServerState state(s);
   state.newUser("Gustavo", "123", "");
   state.newUser("Choque", "123", "");
@@ -485,7 +556,7 @@ int main(int argc, char *argv[]) {
     message req;
     s.receive(req);
 
-    dispatch(req, state);
+    dispatch(req, state, call_group_state);
   }
   cout << "Finished." << endl;
 }

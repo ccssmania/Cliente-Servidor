@@ -157,9 +157,6 @@ void server(message &m, socket &s, string &userName, bool &call_state,
 
     text += aux + " ";
   }
-
-  // v.push_back(name);
-  // cout << name << " asfasdfa " << m.parts() << endl;
   if (v[0] == "voice") {
     if (call_state != true)
       play_voice(m, s, sound);
@@ -258,6 +255,9 @@ void consola(vector<string> &tokens, socket &s, string &userName, Sound &sound,
   } else if (tokens[0] == "stop") {
     call_state = false;
     message res;
+    if (userName == tokens[1]) {
+      res << "stop" << userName << userName;
+    }
     res << "stop" << userTocall << userName;
     s.send(res);
   } else if (tokens[0] == "salir") {

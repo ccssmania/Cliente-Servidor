@@ -18,6 +18,7 @@ Type in your terminal:
 In other terminal:
 
   ./chat address
+  
 Solution to possible compiling error:
 
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/utp/zmq/lib

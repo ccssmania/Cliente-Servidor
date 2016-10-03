@@ -32,14 +32,16 @@ void mult_matrix_profe(const vector<vector<int>> &m, const vector<int> &coll,
 }
 void dijtra_matrix_profe(const vector<vector<int>> &m, const vector<int> &coll,
                          vector<int> &res, int &estado) {
+  // cout << "inicio" << endl;
   for (int i = 0; i < m[0].size(); i++) {
     int mn = std::numeric_limits<int>::max();
     for (int j = 0; j < coll.size(); j++) {
       mn = min(mn, m[j][i] + coll[j]);
     }
-    // cout << "hola" << endl;
+
     res[i] = mn;
   }
+  // cout << "fin" << endl;
   estado = 1;
 }
 
@@ -60,7 +62,7 @@ void multMatrix(vector<vector<int>> &m1, vector<vector<int>> &m2,
     if (i == thread::hardware_concurrency()) i = 0;
 
     if (estado[i] == 1) {
-      hilo[i] = new thread(dijtra_matrix_profe, cref(m1), cref(m2[count]),
+      hilo[i] = new thread(mult_matrix_profe, cref(m1), cref(m2[count]),
                            ref(res[count]), ref(estado[i]));
       estado[i] = 0;
       count++;
@@ -79,14 +81,18 @@ void dijtra(vector<vector<int>> &m, vector<thread *> &hilo,
             vector<int> &estado) {
   vector<vector<int>> m2 = m;
   cout << "-------M-------" << endl;
-  show_matrix(m);
+  // show_matrix(m);
   cout << endl;
   vector<vector<int>> res2(m.size(), vector<int>(m[0].size()));
   for (int j = 0; j < m.size() - 1; j++) {
     int i = 0;
     int count = 0;
+    // cout << "j: " << j << endl;
     while (true) {
+      cout << count << endl;
       if (i == thread::hardware_concurrency()) i = 0;
+      // cout << "count " << count << endl;
+      // cout << " estado[ " << i << " ]" << estado[i] << endl;
 
       if (estado[i] == 1) {
         hilo[i] = new thread(dijtra_matrix_profe, cref(m), cref(m2[count]),
@@ -94,15 +100,29 @@ void dijtra(vector<vector<int>> &m, vector<thread *> &hilo,
         estado[i] = 0;
         count++;
         i++;
+      } else if (i == 0 && estado[i + 1] == 1) {
+        hilo[i + 1] = new thread(dijtra_matrix_profe, cref(m), cref(m2[count]),
+                                 ref(res2[count]), ref(estado[i]));
+        estado[i + 1] = 0;
+        count++;
+        i++;
+      } else if (i == 1 && estado[i - 1] == 1) {
+        hilo[i - 1] = new thread(dijtra_matrix_profe, cref(m), cref(m2[count]),
+                                 ref(res2[count]), ref(estado[i]));
+        estado[i - 1] = 0;
+        count++;
+        i++;
       }
 
       if (count == m.size()) break;
     }
     for (int i = 0; i < hilo.size(); i++) {
+      // cout << "hola" << endl;
+
       hilo[i]->join();
     }
     cout << "iter :" << j + 1 << endl;
-    show_matrix(res2);
+    // show_matrix(res2);
     m.clear();
     m = res2;
   }
@@ -146,7 +166,7 @@ vector<vector<int>> subMatrix(vector<vector<int>> &m, int initcolls,
 
 void mult_blocks(vector<vector<int>> &m1, int &estado,
                  vector<vector<int>> &res) {
-  if (m1.size() > 2) {
+  if (m1.size() > 3) {
     vector<vector<vector<int>>> subm1(
         4, vector<vector<int>>(m1[0].size() / 2, vector<int>(m1.size() / 2)));
 
@@ -231,6 +251,7 @@ int main() {
 
   int rows, colls;
   fin >> rows >> colls;
+
   vector<vector<int>> m1(colls, vector<int>(rows));
 
   for (int i = 0; i < m1[0].size(); i++) {
@@ -242,7 +263,7 @@ int main() {
   }
   show_matrix(m1);
 
-  int filas, columnas;
+  /*int filas, columnas;
   fin >> filas >> columnas;
   vector<vector<int>> m2(columnas, vector<int>(filas));
 
@@ -252,14 +273,18 @@ int main() {
       fin >> aux;
       m2[j][i] = aux;
     }
-  }
-  multParalelo(m1, hilo, estado);
+  }*/
+  /*
   cout << "---DIJTRA---" << endl;
   for (int i = 0; i < hilo.size(); i++) {
     delete hilo[i];
-  }
-  vector<thread *> hilo2(thread::hardware_concurrency());
-  dijtra(m1, hilo2, estado);
+  }*/
+  high_resolution_clock::time_point t1 = high_resolution_clock::now();
+  // vector<thread *> hilo2(thread::hardware_concurrency());
+  multParalelo(m1, hilo, estado);
+  high_resolution_clock::time_point t2 = high_resolution_clock::now();
+  auto duration = duration_cast<microseconds>(t2 - t1).count();
+  cout << "tiempo dijtra : " << duration << endl;
   /*high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
   dijtra(m1, hilo, estado);
@@ -273,7 +298,7 @@ int main() {
   auto duration2 = duration_cast<microseconds>(t4 - t3).count();
   cout << "tiempo :" << duration2 << endl;
 */
-  for (int i = 0; i < hilo2.size(); i++) {
-    delete hilo2[i];
+  for (int i = 0; i < hilo.size(); i++) {
+    delete hilo[i];
   }
 }

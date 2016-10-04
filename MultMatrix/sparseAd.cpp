@@ -85,7 +85,7 @@ class thread_pool {
   std::vector<std::thread> threads;
   join_threads *joiner;
   void worker_thread() {
-    while (!done && !work_queue.empty()) {
+    while (!done || !work_queue.empty()) {
       std::function<void()> task;
       if (work_queue.try_pop(task)) {
         task();
@@ -109,13 +109,17 @@ class thread_pool {
     }
   }
   ~thread_pool() {
-    joiner->~join_threads();
+    // joiner->~join_threads();
     done = true;
+    for (auto &thread : threads) {
+      if (thread.joinable()) thread.join();
+    }
     // std::string s("Destructing pool ");
     // s += std::to_string(work_queue.empty());
     // s += '\n';
     // std::cerr << s;
   }
+
   template <typename FunctionType>
   void submit(FunctionType f) {
     work_queue.push(std::function<void()>(f));
@@ -243,32 +247,54 @@ void dijtra_matrix_profe(const SparseMatrix<int> &m, const vector<int> &rowP,
     res.set(sum, referencia, i, salto);
     salto = false;
   }
+  cout << "hola" << endl;
+}
+
+SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m, vector<int> rowP,
+                                const SparseMatrix<int> &m2,
+                                thread_pool &pool) {
+  SparseMatrix<int> res(m.getNumRows(), m.getNumCols());
+  int count = 0;
+  while (true) {
+    auto w = [&m, &rowP, &m2, count, &res] {
+      dijtra_matrix_profe(m, rowP, m2, count, res);
+    };
+
+    count++;
+    pool.submit(w);
+    if (count == m.getNumCols()) break;
+  }
+  string a;
+  cin >> a;
+  return res;
 }
 
 SparseMatrix<int> dijtra_blocks(const SparseMatrix<int> &m) {
   // vector<thread *> hilo(thread::hardware_concurrency());
+  thread_pool pool;
   vector<SparseMatrix<int>> m2(
       m.getNumCols(), SparseMatrix<int>(m.getNumRows(), m.getNumCols()));
-  m2[0] = m;
   SparseMatrix<int> res(m.getNumRows(), m.getNumCols());
+  m2[0] = m;
+
   cout << "-------M-------" << endl;
   showmatrix(m);
   cout << endl;
   vector<int> rowP = m.getRowPtr();
-  for (int j = 0; j < m.getNumCols() - 1; j++) {
-    int i = 0;
-    int count = 0;
-    while (true) {
-      dijtra_matrix_profe(m, rowP, m, count, res);
-
-      count++;
-
-      if (count == m.getNumCols()) break;
+  int n = m.getNumCols() - 1;
+  int j = 0;
+  while (n > 1) {
+    if (n % 2 == 0) {
+      n = n / 2;
+      res = dijtra_reduce(m, rowP, m2[j], pool);
+    } else {
+      res = dijtra_reduce(m, rowP, dijtra_reduce(m, rowP, m2[j], pool), pool);
+      n = (n - 1) / 2;
     }
-
     cout << "iter :" << j + 1 << endl;
     showmatrix(res);
     m2[j + 1] = res;
+    j++;
   }
   return res;
 }
@@ -361,11 +387,25 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
         subMatrix(m2, m2.getNumCols() / 2, m2.getNumCols() / 2, m2.getNumCols(),
                   m2.getNumCols());
     showmatrix(b3);
+    cout << endl;
 
     SparseMatrix<int> r0 = min_matrix(mult_blocks(a0, b0), mult_blocks(a1, b2));
     SparseMatrix<int> r1 = min_matrix(mult_blocks(a0, b1), mult_blocks(a1, b3));
     SparseMatrix<int> r2 = min_matrix(mult_blocks(a2, b0), mult_blocks(a3, b2));
     SparseMatrix<int> r3 = min_matrix(mult_blocks(a2, b1), mult_blocks(a3, b3));
+
+    cout << " r0 " << endl;
+    showmatrix(r0);
+    cout << endl;
+    cout << " r1 " << endl;
+    showmatrix(r1);
+    cout << endl;
+    cout << " r2 " << endl;
+    showmatrix(r2);
+    cout << endl;
+    cout << " r3 " << endl;
+    showmatrix(r3);
+    cout << endl;
 
     SparseMatrix<int> res(m1.getNumRows(), m2.getNumCols());
 
@@ -374,9 +414,9 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
     // reconstruction(res, res.getNumRows() / 2, 0, r2);
     // reconstruction(res, res.getNumRows() / 2, res.getNumCols() / 2, r3);
 
-    cout << "res :" << endl;
+    // cout << "res :" << endl;
     // showmatrix(res);
-    // return res;
+    return res;
   } else
     return dijtra_blocks(m1);
 }

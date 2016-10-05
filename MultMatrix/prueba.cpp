@@ -85,7 +85,7 @@ class thread_pool {
   std::vector<std::thread> threads;
   join_threads *joiner;
   void worker_thread() {
-    while (!done || !work_queue.empty()) {
+    while (!done && !work_queue.empty()) {
       std::function<void()> task;
       if (work_queue.try_pop(task)) {
         task();
@@ -109,23 +109,13 @@ class thread_pool {
     }
   }
   ~thread_pool() {
-    // joiner->~join_threads();
+    joiner->~join_threads();
     done = true;
-    for (auto &thread : threads) {
-      if (thread.joinable()) thread.join();
-    }
     // std::string s("Destructing pool ");
     // s += std::to_string(work_queue.empty());
     // s += '\n';
     // std::cerr << s;
   }
-  void kill() {
-    done = true;
-    for (auto &thread : threads) {
-      if (thread.joinable()) thread.join();
-    }
-  }
-
   template <typename FunctionType>
   void submit(FunctionType f) {
     work_queue.push(std::function<void()>(f));
@@ -148,8 +138,8 @@ class SparseMatrix {
  public:
   SparseMatrix(int r, int c)
       : rows(r), cols(c), rowPtr(r + 1, 1), count(0), countrows(0) {}
-  int getNumCols() const { return this->cols; }
-  int getNumRows() const { return this->rows; }
+  const int &getNumCols() const { return this->cols; }
+  const int &getNumRows() const { return this->rows; }
 
   T get(int r, int c) const {
     if (r == 0)
@@ -202,7 +192,7 @@ class SparseMatrix {
     } else
       cout << " la multiplicacion no se puede hacer" << endl;
   }
-  int indiceCol(int a) const { return colInd[a]; }
+  const int &indiceCol(int a) const { return colInd[a]; }
   void show() {
     for (int i = 0; i < rowPtr.size(); i++) {
       cout << rowPtr[i] << " ";
@@ -227,11 +217,11 @@ class SparseMatrix {
     rowPtr.clear();
     colInd.clear();
   }
-  vector<T> getRowPtr() const { return rowPtr; }
+  const vector<T> &getRowPtr() const { return rowPtr; }
 };
 
 template <class T>
-void showmatrixx(const SparseMatrix<T> &m) {
+void showmatrix(const SparseMatrix<T> &m) {
   for (int i = 0; i < m.getNumRows(); i++) {
     for (int j = 0; j < m.getNumCols(); j++) {
       cout << m.get(i, j) << " ";
@@ -254,55 +244,44 @@ void dijtra_matrix_profe(const SparseMatrix<int> &m, const vector<int> &rowP,
     salto = false;
   }
 }
-
-SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m, vector<int> rowP,
-                                const SparseMatrix<int> &m2,
-                                thread_pool &pool) {
+SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m,
+                                const SparseMatrix<int> &m2) {
+  vector<int> rowP = m.getRowPtr();
   SparseMatrix<int> res(m.getNumRows(), m.getNumCols());
   int count = 0;
   while (true) {
-    auto w = [&m, &rowP, &m2, count, &res] {
-      dijtra_matrix_profe(m, rowP, m2, count, res);
-    };
+    dijtra_matrix_profe(m, rowP, m2, count, res);
 
     count++;
-    pool.submit(w);
     if (count == m.getNumCols()) break;
   }
-  pool.kill();
   return res;
 }
-
-SparseMatrix<int> dijtra_blocks(const SparseMatrix<int> &m,
-                                const SparseMatrix<int> &m2) {
+SparseMatrix<int> dijtra_blocks(const SparseMatrix<int> &m) {
   // vector<thread *> hilo(thread::hardware_concurrency());
-  thread_pool pool;
-  vector<SparseMatrix<int>> m3(
+  vector<SparseMatrix<int>> m2(
       m.getNumCols(), SparseMatrix<int>(m.getNumRows(), m.getNumCols()));
+  m2[0] = m;
   SparseMatrix<int> res(m.getNumRows(), m.getNumCols());
-  m3[0] = m2;
-
   cout << "-------M-------" << endl;
-  // // showmatrixx(m);
+  // // showmatrix(m);
   cout << endl;
   vector<int> rowP = m.getRowPtr();
-  int n = m.getNumCols() - 1;
   int j = 0;
+  int n = m.getNumCols() - 1;
   while (n > 1) {
-    // cout << "n " << n << endl;
+    cout << "n " << n << endl;
     if (n % 2 == 0) {
       n = n / 2;
-      res = dijtra_reduce(m, rowP, m3[j], pool);
-      cout << "iter :" << j + 1 << endl;
-      // // showmatrixx(res);
-      m3[j + 1] = res;
+      res = dijtra_reduce(m, m2[j]);
+      // cout << "iter :" << j + 1 << endl;
+      m2[j + 1] = res;
       j++;
     } else {
-      res = dijtra_reduce(m, rowP, dijtra_reduce(m, rowP, m3[j], pool), pool);
+      res = dijtra_reduce(m, dijtra_reduce(m, m2[j]));
       n = (n - 1) / 2;
-      cout << "iter :" << j + 1 << endl;
-      // // showmatrixx(res);
-      m3[j + 1] = res;
+      // cout << "iter :" << j + 1 << endl;
+      m2[j + 1] = res;
       j++;
     }
   }
@@ -326,6 +305,11 @@ SparseMatrix<int> subMatrix(const SparseMatrix<int> &m, int initcolls,
 }
 SparseMatrix<int> min_matrix(const SparseMatrix<int> &a,
                              const SparseMatrix<int> &b) {
+  // cout << endl << "a " << endl;
+  // showmatrix(a);
+  // cout << endl << "b " << endl;
+  // showmatrix(b);
+
   SparseMatrix<int> res(a.getNumRows(), a.getNumCols());
   bool salto = true;
   for (int i = 0; i < a.getNumRows(); i++) {
@@ -346,18 +330,22 @@ SparseMatrix<int> min_matrix(const SparseMatrix<int> &a,
   return res;
 }
 
-void reconstruction(SparseMatrix<int> &res, int indFila, int indCol,
-                    SparseMatrix<int> &m) {
+void reconstruction(SparseMatrix<int> &res, const int &indFila,
+                    const int &indice, const SparseMatrix<int> &m1,
+                    const SparseMatrix<int> &m2) {
   bool salto = true;
-  for (int i = 0; i < m.getNumRows(); i++) {
-    int aux = indCol;
-    for (int j = 0; j < m.getNumCols(); j++) {
-      if (m.get(i, j) != 0) {
-        res.set(m.get(i, j), i + indFila, j + indCol, salto);
-        salto = false;
-      }
+
+  for (int i = 0; i < m1.getNumRows(); i++) {
+    if (m1.get(indFila, i) != 0) {
+      res.set(m1.get(indFila, i), indice, i, salto);
+      salto = false;
     }
-    salto = true;
+  }
+
+  for (int i = 0; i < m2.getNumRows(); i++) {
+    if (m2.get(indFila, i) != 0) {
+      res.set(m2.get(indFila, i), indice, i + m2.getNumRows(), salto);
+    }
   }
 }
 
@@ -366,69 +354,72 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
   if (m1.getNumCols() > 25) {
     SparseMatrix<int> a0 =
         subMatrix(m1, 0, 0, m1.getNumCols() / 2, m1.getNumCols() / 2);
-    // showmatrixx(a0);
-    cout << endl;
+    // showmatrix(a0);
+    // cout << endl;
     SparseMatrix<int> a1 = subMatrix(m1, 0, m1.getNumCols() / 2,
                                      m1.getNumCols() / 2, m1.getNumCols());
-    // showmatrixx(a1);
-    cout << endl;
+    // showmatrix(a1);
+    // cout << endl;
     SparseMatrix<int> a2 = subMatrix(m1, m1.getNumCols() / 2, 0,
                                      m1.getNumCols(), m1.getNumCols() / 2);
 
-    // showmatrixx(a2);
-    cout << endl;
+    // showmatrix(a2);
+    // cout << endl;
     SparseMatrix<int> a3 =
         subMatrix(m1, m1.getNumCols() / 2, m1.getNumCols() / 2, m1.getNumCols(),
                   m1.getNumCols());
-    // showmatrixx(a3);
-    cout << endl;
+    // showmatrix(a3);
+    // cout << endl;
 
     SparseMatrix<int> b0 =
         subMatrix(m2, 0, 0, m2.getNumCols() / 2, m2.getNumCols() / 2);
-    // showmatrixx(b0);
+    // showmatrix(b0);
     SparseMatrix<int> b1 = subMatrix(m2, 0, m2.getNumCols() / 2,
                                      m2.getNumCols() / 2, m2.getNumCols());
-    // showmatrixx(b1);
+    // showmatrix(b1);
     SparseMatrix<int> b2 = subMatrix(m2, m2.getNumCols() / 2, 0,
                                      m2.getNumCols(), m2.getNumCols() / 2);
 
-    // showmatrixx(b2);
+    // showmatrix(b2);
     SparseMatrix<int> b3 =
         subMatrix(m2, m2.getNumCols() / 2, m2.getNumCols() / 2, m2.getNumCols(),
                   m2.getNumCols());
-    // showmatrixx(b3);
-    cout << endl;
-
+    // showmatrix(b3);
+    // cout << "hola" << endl;
     SparseMatrix<int> r0 = min_matrix(mult_blocks(a0, b0), mult_blocks(a1, b2));
     SparseMatrix<int> r1 = min_matrix(mult_blocks(a0, b1), mult_blocks(a1, b3));
     SparseMatrix<int> r2 = min_matrix(mult_blocks(a2, b0), mult_blocks(a3, b2));
     SparseMatrix<int> r3 = min_matrix(mult_blocks(a2, b1), mult_blocks(a3, b3));
 
-    cout << " r0 " << endl;
-    // showmatrixx(r0);
-    cout << endl;
-    cout << " r1 " << endl;
-    // showmatrixx(r1);
-    cout << endl;
-    cout << " r2 " << endl;
-    // showmatrixx(r2);
-    cout << endl;
-    cout << " r3 " << endl;
-    // showmatrixx(r3);
-    cout << endl;
+    // cout << " r0 " << endl;
+    // showmatrix(r0);
+    // cout << endl;
+    // cout << " r1 " << endl;
+    // showmatrix(r1);
+    // cout << endl;
+    // cout << " r2 " << endl;
+    // showmatrix(r2);
+    // cout << endl;
+    // cout << " r3 " << endl;
+    // showmatrix(r3);
+    // cout << endl;
 
+    int j = 0;
     SparseMatrix<int> res(m1.getNumRows(), m2.getNumCols());
-
-    // reconstruction(res, 0, 0, r0);
-    // reconstruction(res, 0, res.getNumCols() / 2, r1);
-    // reconstruction(res, res.getNumRows() / 2, 0, r2);
-    // reconstruction(res, res.getNumRows() / 2, res.getNumCols() / 2, r3);
+    for (int i = 0; i < res.getNumRows() / 2; i++) {
+      reconstruction(res, i, j, r0, r1);
+      j++;
+    }
+    for (int i = 0; i < res.getNumRows() / 2; i++) {
+      reconstruction(res, i, j, r2, r3);
+      j++;
+    }
 
     // cout << "res :" << endl;
-    // // showmatrixx(res);
+    // showmatrix(res);
     return res;
   } else
-    return dijtra_blocks(m1, m2);
+    return dijtra_reduce(m1, m2);
 }
 
 int main() {
@@ -456,13 +447,28 @@ int main() {
     }
     salto = true;
   }
-  cout << endl;
-  // showmatrixx(m1);
-  cout << endl;
+  // cout << endl;
+  // showmatrix(m1);
+  // cout << endl;
 
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
-
-  SparseMatrix<int> res = mult_blocks(m1, m1);
+  int n = m1.getNumCols() - 1;
+  int j = 0;
+  while (n > 1) {
+    cout << "n " << n << endl;
+    if (n % 2 == 0) {
+      n = n / 2;
+      SparseMatrix<int> res = mult_blocks(m1, m1);
+      // cout << "iter :" << j + 1 << endl;
+      j++;
+    } else {
+      SparseMatrix<int> res = mult_blocks(m1, mult_blocks(m1, m1));
+      n = (n - 1) / 2;
+      // cout << "iter :" << j + 1 << endl;
+      // // showmatrixx(res);
+      j++;
+    }
+  }
 
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
 

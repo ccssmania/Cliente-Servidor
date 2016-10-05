@@ -138,6 +138,13 @@ class SparseMatrix {
  public:
   SparseMatrix(int r, int c)
       : rows(r), cols(c), rowPtr(r + 1, 1), count(0), countrows(0) {}
+  SparseMatrix(int r, int c, int aristas)
+      : rows(r),
+        cols(c),
+        rowPtr(r + 1, 1),
+        count(0),
+        countrows(0),
+        val(aristas) {}
   const int &getNumCols() const { return this->cols; }
   const int &getNumRows() const { return this->rows; }
 
@@ -218,6 +225,7 @@ class SparseMatrix {
     colInd.clear();
   }
   const vector<T> &getRowPtr() const { return rowPtr; }
+  const vector<T> &getColInd() const { return colInd; }
 };
 
 template <class T>
@@ -288,19 +296,26 @@ SparseMatrix<int> dijtra_blocks(const SparseMatrix<int> &m) {
   return res;
 }
 
-SparseMatrix<int> subMatrix(const SparseMatrix<int> &m, int initcolls,
-                            int initrows, int endcolls, int endrows) {
-  SparseMatrix<int> res((endrows - initrows), (endcolls - initcolls));
+SparseMatrix<int> subMatrix(const SparseMatrix<int> &m, int initrows,
+                            int initcolls, int endrows, int endcolls) {
+  SparseMatrix<int> res(m.getNumRows() / 2, m.getNumCols() / 2);
+  cout << "hola" << endl;
   bool salto = true;
-  for (int i = initcolls; i < endcolls; i++) {
-    for (int j = initrows; j < endrows; j++) {
-      if (m.get(i, j) != 0) {
-        res.set(m.get(i, j), (i - initcolls), (j - initrows), salto);
+  vector<int> col = m.getColInd();
+  vector<int> row = m.getRowPtr();
+  cout << "initrows " << initrows << " endrows " << endrows << endl
+       << " initcolls " << initcolls << " endcolls " << endcolls << endl;
+  for (int i = initrows; i < endrows; i++) {
+    // cout << "i " << i << endl;
+    for (int j = row[initcolls]; j < row[initcolls + 1]; j++) {
+      if (col[j] < endcolls && col[j] >= initcolls) {
+        res.set(m.get(i, j), (i - initrows), (j - row[initrows]), salto);
         salto = false;
       }
     }
     salto = true;
   }
+  cout << "fin" << endl;
   return res;
 }
 SparseMatrix<int> min_matrix(const SparseMatrix<int> &a,
@@ -351,7 +366,9 @@ void reconstruction(SparseMatrix<int> &res, const int &indFila,
 
 SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
                               const SparseMatrix<int> &m2) {
-  if (m1.getNumCols() > 25) {
+  cout << "filas : " << m1.getNumRows() << endl
+       << " columnas " << m1.getNumCols() << endl;
+  if (m1.getNumCols() > 256) {
     SparseMatrix<int> a0 =
         subMatrix(m1, 0, 0, m1.getNumCols() / 2, m1.getNumCols() / 2);
     // showmatrix(a0);
@@ -438,9 +455,13 @@ int main() {
   int i = 0;
   int num;
 
+  int powRow = pow(2, ceil(log2(double(rows))));
+
+  if (rows != powRow) {
+    rows = powRow;
+  }
   SparseMatrix<int> m1(rows, rows);
   while (!fin.eof()) {
-    cout << "hola" << endl;
     string a;
     int j;
     int val;

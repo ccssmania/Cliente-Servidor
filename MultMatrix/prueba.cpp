@@ -429,14 +429,33 @@ int main() {
        << endl;
 
   ifstream fin;
-  fin.open("archivo.txt", ios::in);
+  fin.open("sorted.txt", ios::in);
 
   int rows, colls;
   fin >> rows >> colls;
+  int aux;
+  bool salto;
+  int i = 0;
+  int num;
 
-  SparseMatrix<int> m1(rows, colls);
-  bool salto = true;
-  for (int i = 0; i < m1.getNumRows(); i++) {
+  SparseMatrix<int> m1(rows, rows);
+  while (!fin.eof()) {
+    cout << "hola" << endl;
+    string a;
+    int j;
+    int val;
+    aux = i - 1;
+    fin >> a >> i >> j >> val;
+    if (aux == 0 || aux < i - 1) {
+      salto = true;
+    }
+    m1.set(val, i - 1, j - 1, salto);
+    salto = false;
+  }
+
+  // SparseMatrix<int> m1(rows, colls);
+
+  /*for (int i = 0; i < m1.getNumRows(); i++) {
     for (int j = 0; j < m1.getNumCols(); j++) {
       int aux;
       fin >> aux;
@@ -446,7 +465,7 @@ int main() {
       }
     }
     salto = true;
-  }
+  }*/
   // cout << endl;
   // showmatrix(m1);
   // cout << endl;

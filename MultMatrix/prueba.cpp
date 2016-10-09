@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <atomic>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index_container.hpp>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
@@ -139,18 +142,33 @@ class SparseMatrix {
       if (c == val[r][i].first) return val[r][i].second;
     }
   }
+  const T binary_search(const vector<pair<int, int>> &v, int inicio, int fin,
+                        int c) const {
+    int m = ((inicio + fin) / 2);
+    if (inicio > fin) return 0;
+    if (v[m].first == c) {
+      return v[m].second;
+    } else if (v[m].first > c)
+      return binary_search(v, inicio, m - 1, c);
+    else
+      return binary_search(v, m + 1, fin, c);
+  }
+  const T get2(int r, int c) const {
+    int aux = this->binary_search(val[r], 0, val[r].size(), c);
+    return aux;
+  }
   void set(T valor, int r, int c) {
     val[r].push_back(std::make_pair(c, valor));
   }
-
-  /*void sort() {
+  void sort() {
     for (int i = 0; i < val.size(); i++) {
       std::sort(val[i].begin(), val[i].end(),
                 boost::bind(&std::pair<int, int>::first, _1) <
                     boost::bind(&std::pair<int, int>::first, _2));
     }
-  }*/
+  }
   const vector<pair<int, int>> operator[](int i) const { return val[i]; }
+  const pair<int, int> operator()(int &i, int &j) const { return val[i][j]; }
   const int &getsize(vector<pair<int, int>> &m) const { return m.size(); }
   const int &getNumRows() const { return rows; }
   const int &getNumCols() const { return cols; }
@@ -173,10 +191,11 @@ void dijtra_matrix_profe(const vector<pair<int, int>> &m,
   for (int i = 0; i < b.getNumRows(); i++) {
     int sum = std::numeric_limits<int>::max();
     for (int j = 0; j < b[i].size(); j++) {
-      if (b.get(m[j].first, i) == 0) {
+      int aux = b.get2(m[j].first, i);
+      if (aux == 0) {
         sum = min(sum, std::numeric_limits<int>::max());
       } else {
-        sum = min(sum, (m[j].second + b.get(m[j].first, i)));
+        sum = min(sum, (m[j].second + aux));
       }
     }
     res.set(sum, referencia, i);
@@ -185,11 +204,33 @@ void dijtra_matrix_profe(const vector<pair<int, int>> &m,
 SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m,
                                 const SparseMatrix<int> &m2) {
   SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
-
   int count = 0;
   while (true) {
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
     dijtra_matrix_profe(m[count], m2, count, res);
 
+    count++;
+    if (count == m.getNumCols()) break;
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+    auto duration = duration_cast<microseconds>(t2 - t1).count();
+
+    cout << "tiempo dijtra : " << duration / 1000 << endl;
+  }
+
+  return res;
+}
+
+SparseMatrix<int> dijtra_reduce_concurrent(const SparseMatrix<int> &m,
+                                           const SparseMatrix<int> &m2) {
+  SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
+  thread_pool pool;
+  int count = 0;
+  while (true) {
+    auto w = [&m, &m2, count, &res] {
+      dijtra_matrix_profe(m[count], m2, count, res);
+    };
+    pool.submit(w);
     count++;
     if (count == m.getNumCols()) break;
   }
@@ -376,7 +417,7 @@ int main() {
   cout << endl;
 */
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
-  int n = m1.getNumCols() - 1;
+  /*int n = m1.getNumCols() - 1;
   int j = 0;
   while (n > 1) {
     cout << "n " << n << endl;
@@ -393,10 +434,13 @@ int main() {
       cout << "res " << endl;
       showmatrix(res);
     }
-  }
+  }*/
   // showmatrix(res);
-  high_resolution_clock::time_point t2 = high_resolution_clock::now();
+  // m1.sort();
 
+  SparseMatrix<int> res = mult_blocks(m1, m1);
+  high_resolution_clock::time_point t2 = high_resolution_clock::now();
+  // m1.sort();
   auto duration = duration_cast<microseconds>(t2 - t1).count();
 
   cout << "tiempo dijtra : " << duration << endl;

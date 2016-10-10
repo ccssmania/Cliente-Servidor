@@ -11,6 +11,7 @@
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <set>
 #include <thread>
 #include <vector>
 // g++ mult_matrix.cpp -std=c++11 -o mult -pthread
@@ -132,43 +133,22 @@ class SparseMatrix {
  private:
   int rows;
   int cols;
-  vector<vector<pair<int, T>>> val;
+  vector<map<int, T>> val;
 
  public:
   SparseMatrix(int r, int c) : rows(r), cols(c), val(r) {}
 
   T get(int r, int c) const {
-    for (int i = 0; i < val[r].size(); i++) {
-      if (c == val[r][i].first) return val[r][i].second;
-    }
+    auto &row = val[r];
+    auto it = row.find(c);
+    if (it != row.end()) return it->second;
+
+    return T();
   }
-  const T binary_search(const vector<pair<int, int>> &v, int inicio, int fin,
-                        int c) const {
-    int m = ((inicio + fin) / 2);
-    if (inicio > fin) return 0;
-    if (v[m].first == c) {
-      return v[m].second;
-    } else if (v[m].first > c)
-      return binary_search(v, inicio, m - 1, c);
-    else
-      return binary_search(v, m + 1, fin, c);
-  }
-  const T get2(int r, int c) const {
-    int aux = this->binary_search(val[r], 0, val[r].size(), c);
-    return aux;
-  }
-  void set(T valor, int r, int c) {
-    val[r].push_back(std::make_pair(c, valor));
-  }
-  void sort() {
-    for (int i = 0; i < val.size(); i++) {
-      std::sort(val[i].begin(), val[i].end(),
-                boost::bind(&std::pair<int, int>::first, _1) <
-                    boost::bind(&std::pair<int, int>::first, _2));
-    }
-  }
-  const vector<pair<int, int>> operator[](int i) const { return val[i]; }
-  const pair<int, int> operator()(int &i, int &j) const { return val[i][j]; }
+
+  void set(T valor, int r, int c) { val[r][c] = valor; }
+
+  const map<int, T> &operator[](int i) const { return val[i]; }
   const int &getsize(vector<pair<int, int>> &m) const { return m.size(); }
   const int &getNumRows() const { return rows; }
   const int &getNumCols() const { return cols; }
@@ -183,19 +163,18 @@ void showmatrix(const SparseMatrix<T> &m) {
     cout << endl;
   }
 }
-void dijtra_matrix_profe(const vector<pair<int, int>> &m,
-                         const SparseMatrix<int> &b, int referencia,
-                         SparseMatrix<int> &res) {
+void dijtra_matrix_profe(const map<int, int> &m, const SparseMatrix<int> &b,
+                         int referencia, SparseMatrix<int> &res) {
   // cout << "inicio" << endl;
 
   for (int i = 0; i < b.getNumRows(); i++) {
     int sum = std::numeric_limits<int>::max();
-    for (int j = 0; j < b[i].size(); j++) {
-      int aux = b.get2(m[j].first, i);
+    for (const pair<int, int> &e : m) {
+      int aux = b.get(e.first, i);
       if (aux == 0) {
         sum = min(sum, std::numeric_limits<int>::max());
       } else {
-        sum = min(sum, (m[j].second + aux));
+        sum = min(sum, (e.second + aux));
       }
     }
     res.set(sum, referencia, i);
@@ -385,9 +364,9 @@ int main() {
 
   int powRow = pow(2, ceil(log2(double(rows))));
   cout << "pow " << powRow << endl;
-  if (rows != powRow) {
+  /*if (rows != powRow) {
     rows = powRow;
-  }
+  }*/
   SparseMatrix<int> m1(rows, rows);
   while (!fin.eof()) {
     string a;
@@ -438,7 +417,7 @@ int main() {
   // showmatrix(res);
   // m1.sort();
 
-  SparseMatrix<int> res = mult_blocks(m1, m1);
+  SparseMatrix<int> res = dijtra_reduce(m1, m1);
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
   // m1.sort();
   auto duration = duration_cast<microseconds>(t2 - t1).count();

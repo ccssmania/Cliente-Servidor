@@ -201,7 +201,7 @@ SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m,
     dijtra_matrix_profe(m[i], m2, i, res);
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(t2 - t1).count();
-    cout << "tiempo " << duration / 1000 << endl;
+    // cout << "tiempo " << duration << endl;
   }
 
   return res;
@@ -230,8 +230,9 @@ SparseMatrix<int> subMatrix(const SparseMatrix<int> &m, int initrows,
   for (int i = initrows; i < endrows; i++) {
     // cout << "i " << i << endl;
     int indice = 0;
-    for (int j = initcolls; j < endcolls; j++) {
-      res.set(m.get(i, j), (i - initrows), indice);
+    for (const pair<int, int> &e : m[i]) {
+      if (e.first > endcolls) break;
+      res.set(m.get(i, e.first), (i - initrows), indice);
 
       indice++;
     }
@@ -285,9 +286,13 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
   // cout << "filas : " << m1.getNumRows() << endl
   //    << " columnas " << m1.getNumCols() << endl;
   if (m1.getNumCols() > 512) {
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
     SparseMatrix<int> a0 =
         subMatrix(m1, 0, 0, m1.getNumCols() / 2, m1.getNumCols() / 2);
     cout << endl;
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(t2 - t1).count();
+    cout << "tiempo dijtra : " << duration / 1000 << endl;
     SparseMatrix<int> a1 = subMatrix(m1, 0, m1.getNumCols() / 2,
                                      m1.getNumCols() / 2, m1.getNumCols());
     cout << endl;
@@ -346,8 +351,10 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
     // cout << "res :" << endl;
     // // showmatrix(res);
     return res;
-  } else
+  } else {
+    cout << "else" << endl;
     return dijtra_reduce(m1, m2);
+  }
 }
 
 int main() {

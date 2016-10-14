@@ -193,6 +193,8 @@ void dijtra_matrix_profe(const map<int, int> &v, const SparseMatrix<int> &b,
 SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m,
                                 const SparseMatrix<int> &m2) {
   SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
+  if (m.zeroRows() == m.getNumRows()) return m2;
+  if (m2.zeroRows() == m2.getNumRows()) return m;
   for (int i = 0; i < m.getNumCols() && !m[i].empty(); i++) {
     dijtra_matrix_profe(m[i], m2, i, res);
   }
@@ -204,7 +206,9 @@ SparseMatrix<int> dijtra_reduce_concurrent(const SparseMatrix<int> &m,
   SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
   thread_pool pool;
   int count = 0;
-  while (true) {
+  if (m.zeroRows() == m.getNumRows()) return m2;
+  if (m2.zeroRows() == m2.getNumRows()) return m;
+  while (m.zeroRows() != m.getNumRows() && m2.zeroRows() != m2.getNumRows()) {
     auto w = [&m, &m2, count, &res] {
       dijtra_matrix_profe(m[count], m2, count, res);
     };

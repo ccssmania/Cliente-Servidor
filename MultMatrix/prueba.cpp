@@ -175,6 +175,18 @@ void showmatrix(const SparseMatrix<T> &m) {
     cout << endl;
   }
 }
+void dijtra_matrix_profe2(const map<int, int> &v, const SparseMatrix<int> &b,
+                          int referencia, SparseMatrix<int> &res) {
+  for (const pair<int, int> &e : v) {
+    for (const pair<int, int> &f : b[e.first]) {
+      if (res.get(referencia, e.first) == 0) {
+        res.set(e.second + f.second, referencia, e.first);
+      } else
+        res.set(min(res.get(referencia, e.first), e.second + f.second),
+                referencia, e.first);
+    }
+  }
+}
 void dijtra_matrix_profe(const map<int, int> &v, const SparseMatrix<int> &b,
                          int referencia, SparseMatrix<int> &res) {
   for (int i = 0; i < b.getNumCols(); i++) {
@@ -210,7 +222,7 @@ SparseMatrix<int> dijtra_reduce_concurrent(const SparseMatrix<int> &m,
   if (m2.zeroRows() == m2.getNumRows()) return m;
   while (m.zeroRows() != m.getNumRows() && m2.zeroRows() != m2.getNumRows()) {
     auto w = [&m, &m2, count, &res] {
-      dijtra_matrix_profe(m[count], m2, count, res);
+      dijtra_matrix_profe2(m[count], m2, count, res);
     };
     pool.submit(w);
     count++;
@@ -268,10 +280,11 @@ void reconstruction(SparseMatrix<int> &res, const int &indFila,
     }
   }
 }
+int contador = 0;
 
 SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
                               const SparseMatrix<int> &m2) {
-  if (m1.getNumCols() > 1024) {
+  if (m1.getNumCols() > 4) {
     SparseMatrix<int> a0 =
         subMatrix(m1, 0, 0, m1.getNumCols() / 2, m1.getNumCols() / 2);
     // showmatrix(a0);
@@ -333,7 +346,8 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
     // // showmatrix(res);
     return res;
   } else {
-    cout << "else" << endl;
+    contador++;
+    cout << contador << endl;
     return dijtra_reduce(m1, m2);
   }
 }
@@ -377,6 +391,7 @@ int main() {
   }*/
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
   int n = rows - 1;
+  // SparseMatrix<int> res = mult_blocks(m1, m1);
   while (n > 1) {
     cout << "n " << n << endl;
     if (n % 2 == 0) {

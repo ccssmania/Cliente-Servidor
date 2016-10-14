@@ -136,6 +136,7 @@ class SparseMatrix {
   vector<map<int, T>> val;
 
  public:
+  SparseMatrix() : rows(0), cols(0), val() {}
   SparseMatrix(int r, int c) : rows(r), cols(c), val(r) {}
 
   T get(int r, int c) const {
@@ -179,29 +180,15 @@ void dijtra_matrix_profe2(const map<int, int> &v, const SparseMatrix<int> &b,
                           int referencia, SparseMatrix<int> &res) {
   for (const pair<int, int> &e : v) {
     for (const pair<int, int> &f : b[e.first]) {
-      if (res.get(referencia, e.first) == 0) {
-        res.set(e.second + f.second, referencia, e.first);
+      if (res.get(referencia, f.first) == 0) {
+        res.set(e.second + f.second, referencia, f.first);
       } else
-        res.set(min(res.get(referencia, e.first), e.second + f.second),
-                referencia, e.first);
+        res.set(min(res.get(referencia, f.first), e.second + f.second),
+                referencia, f.first);
     }
   }
 }
-void dijtra_matrix_profe(const map<int, int> &v, const SparseMatrix<int> &b,
-                         int referencia, SparseMatrix<int> &res) {
-  for (int i = 0; i < b.getNumCols(); i++) {
-    int sum = std::numeric_limits<int>::max();
-    for (const pair<int, int> &e : v) {
-      int aux = b.get(e.first, i);
-      if (aux == 0) {
-        sum = min(sum, std::numeric_limits<int>::max());
-      } else {
-        sum = min(sum, (e.second + aux));
-      }
-    }
-    if (sum != std::numeric_limits<int>::max()) res.set(sum, referencia, i);
-  }
-}
+
 SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m,
                                 const SparseMatrix<int> &m2) {
   SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
@@ -387,19 +374,20 @@ int main() {
   }*/
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
   int n = rows - 1;
-  // SparseMatrix<int> res = mult_blocks(m1, m1);
+  SparseMatrix<int> res;
+
   while (n > 1) {
     cout << "n " << n << endl;
     if (n % 2 == 0) {
       n = n / 2;
-      SparseMatrix<int> res = dijtra_reduce_concurrent(m1, m1);
+      res = dijtra_reduce_concurrent(m1, m1);
 
     } else {
-      SparseMatrix<int> res =
-          dijtra_reduce_concurrent(m1, dijtra_reduce_concurrent(m1, m1));
+      res = dijtra_reduce_concurrent(m1, dijtra_reduce_concurrent(m1, m1));
       n = (n - 1) / 2;
     }
   }
+
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>(t2 - t1).count();
   cout << "tiempo dijtra : " << duration / 1000 << endl;

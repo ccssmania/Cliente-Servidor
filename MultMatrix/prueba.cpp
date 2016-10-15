@@ -340,31 +340,39 @@ int main() {
   //   << endl;
   std::vector<int> estado(thread::hardware_concurrency(), 1);
   ifstream fin;
-  fin.open("road.txt", ios::in);
+  fin.open("roadff.txt", ios::in);
 
   int rows, colls;
-  fin >> rows >> colls;
   int aux;
-
+  string op;
   int i = 0;
-  int num;
 
-  int powRow = pow(2, ceil(log2(double(rows))));
+  /*int powRow = pow(2, ceil(log2(double(rows))));
   cout << "pow " << powRow << endl;
   if (rows != powRow) {
     rows = powRow;
-  }
-  SparseMatrix<int> m1(rows, rows);
+  }*/
+  SparseMatrix<int> m1;
+  cout << "Leyendo el archivo " << endl << " ... " << endl;
   while (!fin.eof()) {
     string a;
     int j;
     int val;
     aux = i - 1;
-    fin >> a >> i >> j >> val;
-    if (aux == 0 || aux < i - 1) {
+    fin >> a;
+    if (a == "p") {
+      fin >> op;
+      if (op == "sp") {
+        fin >> rows >> colls;
+        m1 = SparseMatrix<int>(rows, rows);
+      }
     }
-    m1.set(val, i - 1, j - 1);
+    if (a == "a") {
+      fin >> i >> j >> val;
+      m1.set(val, i - 1, j - 1);
+    }
   }
+  cout << "terminado " << endl;
   /*for (int i = 0; i < rows; i++) {
     for (int j = 0; j < rows; j++) {
       int aux;
@@ -375,16 +383,18 @@ int main() {
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
   int n = rows - 1;
   SparseMatrix<int> res;
+  SparseMatrix<int> m2 = m1;
 
   while (n > 1) {
     cout << "n " << n << endl;
     if (n % 2 == 0) {
       n = n / 2;
-      res = dijtra_reduce_concurrent(m1, m1);
-
+      res = dijtra_reduce_concurrent(m1, m2);
+      m1 = res;
     } else {
-      res = dijtra_reduce_concurrent(m1, dijtra_reduce_concurrent(m1, m1));
+      res = dijtra_reduce_concurrent(m2, dijtra_reduce_concurrent(m1, m2));
       n = (n - 1) / 2;
+      m1 = res;
     }
   }
 

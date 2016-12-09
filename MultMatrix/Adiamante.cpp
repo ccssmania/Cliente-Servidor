@@ -176,7 +176,7 @@ void showmatrix(const SparseMatrix<T> &m) {
     cout << endl;
   }
 }
-void dijtra_matrix_profe2(const map<int, int> &v, const SparseMatrix<int> &b,
+void mult_matrix_byColum(const map<int, int> &v, const SparseMatrix<int> &b,
                           int referencia, SparseMatrix<int> &res) {
   for (const pair<int, int> &e : v) {
     for (const pair<int, int> &f : b[e.first]) {
@@ -189,26 +189,26 @@ void dijtra_matrix_profe2(const map<int, int> &v, const SparseMatrix<int> &b,
   }
 }
 
-SparseMatrix<int> dijtra_reduce(const SparseMatrix<int> &m,
-                                const SparseMatrix<int> &m2) {
+SparseMatrix<int> reduce(const SparseMatrix<int> &m,
+                                const SparseMatrix<int> &m2) { // envia la matriz y las columnas a multiplicar
   SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
   if (m.zeroRows() == m.getNumRows()) return m2;
   if (m2.zeroRows() == m2.getNumRows()) return m;
   for (int i = 0; i < m.getNumCols() && !m[i].empty(); i++) {
-    dijtra_matrix_profe2(m[i], m2, i, res);
+    mult_matrix_byColum(m[i], m2, i, res);
   }
   return res;
 }
 
-SparseMatrix<int> dijtra_reduce_concurrent(const SparseMatrix<int> &m,
-                                           const SparseMatrix<int> &m2) {
+SparseMatrix<int> reduce_concurrent(const SparseMatrix<int> &m,
+                                           const SparseMatrix<int> &m2) { //Algoritmo de enviar matriz y columnas concurrentemente
   SparseMatrix<int> res(m.getNumRows(), m2.getNumCols());
   thread_pool pool;
   int count = 0;
   if (m.zeroRows() == m.getNumRows()) return m2;
   if (m2.zeroRows() == m2.getNumRows()) return m;
   for (int i = 0; i < m.getNumCols() && !m[i].empty(); i++) {
-    auto w = [&m, &m2, i, &res] { dijtra_matrix_profe2(m[i], m2, i, res); };
+    auto w = [&m, &m2, i, &res] { mult_matrix_byColum(m[i], m2, i, res); };
     pool.submit(w);
   }
   return res;
@@ -331,16 +331,14 @@ SparseMatrix<int> mult_blocks(const SparseMatrix<int> &m1,
   } else {
     contador++;
     cout << contador << endl;
-    return dijtra_reduce(m1, m2);
+    return reduce(m1, m2);
   }
 }
 
 int main() {
-  // cout << "thread::hardware_concurrency() " << thread::hardware_concurrency()
-  //   << endl;
   std::vector<int> estado(thread::hardware_concurrency(), 1);
   ifstream fin;
-  fin.open("roadff.txt", ios::in);
+  fin.open("road.txt", ios::in);
 
   int rows, colls;
   int aux;
@@ -389,10 +387,10 @@ int main() {
     cout << "n " << n << endl;
     if (n % 2 == 0) {
       n = n / 2;
-      res = dijtra_reduce_concurrent(m1, m2);
+      res = reduce_concurrent(m1, m2);
       m1 = res;
     } else {
-      res = dijtra_reduce_concurrent(m2, dijtra_reduce_concurrent(m1, m2));
+      res = reduce_concurrent(m2, reduce_concurrent(m1, m2));
       n = (n - 1) / 2;
       m1 = res;
     }
